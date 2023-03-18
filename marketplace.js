@@ -212,7 +212,7 @@ async function requestAdditionalTokens(algodclient) {
     params = await algodclient.getTransactionParams().do();
     // const genesisHash = params.genesisHash
     const vendor = vendor_address.addr;
-    const seller = buyer_address.addr;
+    const seller = seller_address.addr;
     const suggestedFeePerByte = 10;
     const amount = 10; // number of tokens to request
     const note = algosdk.encodeObj({ message: "Token request from seller" });
@@ -233,8 +233,8 @@ async function requestAdditionalTokens(algodclient) {
     console.log("Transaction " + xtx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
 
     // You should now see the 10 assets listed in the account information
-    console.log("buyer_address = " + buyer_address.addr);
-    await printAssetHolding(algodclient, buyer_address.addr);
+    console.log("seller_address = " + seller_address.addr);
+    await printAssetHolding(algodclient, seller.addr);
   }
   await requestAdditionalTokens(algodclient);
 
