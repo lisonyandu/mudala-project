@@ -243,14 +243,117 @@ async function waitForApproval(params, suggestedFeePerByte, note) {
   }
 // requestTokens()
 
+// set up marketplace balance
+let marketBalance = 0;
 
+// sell carbon credits to the market
+async function sellCredits() {
+  // get transaction parameters
+  params = await algodclient.getTransactionParams().do();
+  sender = seller_pk.addr;
+  recipient = vendor_pk.addr;
+  revocationTarget = undefined;
+  closeRemainderTo = undefined;
+  //Amount of the asset to transfer
+  amount = 0;
+  // ask user for number of credits to sell
+  rl.question('How many carbon credits do you want to sell?: ', async (answer) => {
+    const numCredits = parseInt(answer);
+    // get transaction parameters
+    amount = numCredits;
+    // create note with sell message
+    const note = algosdk.encodeObj({ message: `Carbon credits sold to market by ${seller_pk.addr}` });
+    // create asset transfer transaction with suggested params and no amount
+    let xtxn = algosdk.makeAssetTransferTxnWithSuggestedParams(
+        sender, 
+        recipient, 
+        closeRemainderTo, 
+        revocationTarget,
+        amount,  
+        note, 
+        assetID, 
+        params);
+    // sign transaction with seller private key
+    rawSignedTxn = xtxn.signTxn(seller_pk.sk)
+    // send transaction and log transaction ID
+    let xtx = (await algodclient.sendRawTransaction(rawSignedTxn).do());
+    // console.log(`Transaction ID: ${txId}`);
+    // Wait for confirmation
+    confirmedTxn = await algosdk.waitForConfirmation(algodclient, xtx.txId, 4);
+    //Get the completed Transaction
+    console.log("Transaction " + xtx.txId + " confirmed in round " + confirmedTxn["confirmed-round"])
+    // update marketplace balance
+    marketBalance += numCredits;
+    // ask user for next action
+    askForAction();
+  });
+}
+// sellCredits()
+// view marketplace balance
+function viewMarketBalance() {
+  console.log(`Marketplace balance: ${marketBalance}`);
+  // ask user for next action
+  askForAction();
+}
+// viewMarketBalance()
 
+// buy carbon credits from the market
+async function buyCredits() {
+  // get transaction parameters
+  params = await algodclient.getTransactionParams().do();
+  sender = vendor_pk.addr;
+  recipient = buyer_pk.addr;
+  revocationTarget = undefined;
+  closeRemainderTo = undefined;
+  //Amount of the asset to transfer
+  amount = 0;
+    // ask user for number of credits to buy
+    rl.question('How many carbon credits do you want to buy?: ', async (answer) => {
+      const numCredits = parseInt(answer);
+      // check if there are enough credits in the market
+      if (numCredits > marketBalance) {
+        console.log('There are not enough carbon credits in the market.');
+        // askForAction();
+        return;
+      }
+      amount = numCredits;
+      // create note with buy message
+      const note = algosdk.encodeObj({ message: `Carbon credits bought from market by ${buyer.addr}` });
+      // create asset transfer transaction with suggested params and no amount
+      // create asset transfer transaction with suggested params and no amount
+    let xtxn = algosdk.makeAssetTransferTxnWithSuggestedParams(
+        sender, 
+        recipient, 
+        closeRemainderTo, 
+        revocationTarget,
+        amount,  
+        note, 
+        assetID, 
+        params);
+ //  sign transaction with buyer private key
+    rawSignedTxn = xtxn.signTxn(buyer_pk.sk)
+    // send transaction and log transaction ID
+    let xtx = (await algodclient.sendRawTransaction(rawSignedTxn).do());
+    // console.log(`Transaction ID: ${txId}`);
+    // Wait for confirmation
+    confirmedTxn = await algosdk.waitForConfirmation(algodclient, xtx.txId, 4);
+    //Get the completed Transaction
+    console.log("Transaction " + xtx.txId + " confirmed in round " + confirmedTxn["confirmed-round"])
+
+    // update marketplace balance
+    marketBalance -= numCredits;
+    // ask user for next action
+    // askForAction();
+  });
+}
+
+buyCredits()
 // OPT IN RECEIVE ASSET BY USER TYPE
-// // Define a function to handle user input
+// Define a function to handle user input
 // async function optInByUser(userType) {
 //   let sender;
 //   let recipient;
-
+//   let note;
 //   if (userType === 'buyer') {
 //     sender = buyer_address;
 //     recipient = sender;
@@ -302,10 +405,10 @@ async function waitForApproval(params, suggestedFeePerByte, note) {
 
 // // Prompt the user to enter the user type and opt-in
 // rl.question('If you want to opt in to receive asset, specify your user type (buyer or seller) and then opt in: ', async (userType) => {
-//   await handleUserInput(userType.trim().toLowerCase());
+//   await optInByUser(userType.trim().toLowerCase());
 //   rl.close();
 // });
-
+// optInByUser()
 
 // Get Balance by specifying a user. 
 

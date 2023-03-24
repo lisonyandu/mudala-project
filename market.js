@@ -45,9 +45,9 @@ const printAssetHolding = async function (algodclient, account, assetid) {
 // paste in mnemonic phrases here for each account
 // Shown for demonstration purposes. NEVER reveal secret mnemonics in practice.
 
-var account1_mnemonic = "near gasp dinosaur genuine mother play festival nose despair accuse motor decade loyal able chief around bike suffer exile awkward capable roof you absorb sister";
-var account2_mnemonic = "work print sadness fortune soup seminar elbow skull tomorrow reduce camera mom flip economy alpha require season disease day bench school skin lunar about shrimp";
-var account3_mnemonic = "lizard bulk will shuffle wild bamboo public stage arrange trade carbon spring always dolphin can drastic thunder hover mind unlock airport gather stamp about can";
+var account1_mnemonic = "mesh enemy swarm oyster same foil kangaroo across biology inflict remain electric angry destroy office solid parade labor place vital link coil flavor abstract convince";
+var account2_mnemonic = "renew census border ethics fragile photo amused alone risk shop exercise aware slide chunk illness slide valid joy album culture evolve moral pretty about fantasy";
+var account3_mnemonic = "busy zebra follow brand fire victory honey addict simple spot final garbage young critic monitor buffalo muffin sting hour ticket aunt elbow slow absorb pipe";
 // var vendor_pk = '47G77X4VEFQ3NSDS2LPBM236HGGEM3IL6T7TBWIMK4LVD4K7GPVLJ7B6CI'
 // var seller_pk = 'VZN6ATQCJF3C37LM45DAVGRKS3R2VJ3K4AURNWB7U3IGAXXLGXTXNOYWXA'
 // var buyer_pk = 'SUAMEZ3XNCLU2RJIWAV6PTXIPKLLSKHXFSZ3ZOHBMDIFL3EMDFV2BATA2Y'
@@ -65,7 +65,7 @@ console.log(seller_address);
 console.log(buyer_address);
 
 // var vendor_pk = `47G77X4VEFQ3NSDS2LPBM236HGGEM3IL6T7TBWIMK4LVD4K7GPVLJ7B6CI`
-var  assetID = 166303669; // Replace with your asset ID
+var  assetID = 166643930; // Replace with your asset ID
 // Instantiate the algod wrapper
 
 let algodclient = new algosdk.Algodv2(token, server, port);
@@ -78,59 +78,59 @@ let algodclient = new algosdk.Algodv2(token, server, port);
     console.log(params);
     let note = undefined; // arbitrary data to be stored in the transaction; here, none is stored
 
-    let addr = vendor_pk.addr;
-    // Whether user accounts will need to be unfrozen before transacting    
-    let defaultFrozen = false;
-    // integer number of decimals for asset unit calculation
-    let decimals = 2;
-    // total number of this asset available for circulation   
-    let totalIssuance = 1000;
-    // Used to display asset units to user    
-    let unitName = "CCT";
-    // Friendly name of the asset    
-    let assetName = "CarbonCreditToken";
-    // Optional string pointing to a URL relating to the asset
-    let assetURL = "http://localhost:8080/";
-    // Optional hash commitment of some sort relating to the asset. 32 character length.
-    let assetMetadataHash = "16efaa3924a6fd9d3a4824799a4ac65d";
-    let manager = vendor_pk.addr;
-    // Specified address is considered the asset reserve
-    // (it has no special privileges, this is only informational)
-    let reserve = vendor_pk.addr;
-    // Specified address can freeze or unfreeze user asset holdings 
-    let freeze = vendor_pk.addr;
-    // Specified address can revoke user asset holdings and send 
-    // them to other addresses    
-    let clawback = vendor_pk.addr;
+    // let addr = vendor_pk.addr;
+    // // Whether user accounts will need to be unfrozen before transacting    
+    // let defaultFrozen = false;
+    // // integer number of decimals for asset unit calculation
+    // let decimals = 2;
+    // // total number of this asset available for circulation   
+    // let totalIssuance = 1000;
+    // // Used to display asset units to user    
+    // let unitName = "CCT";
+    // // Friendly name of the asset    
+    // let assetName = "CarbonCreditToken";
+    // // Optional string pointing to a URL relating to the asset
+    // let assetURL = "http://localhost:8080/";
+    // // Optional hash commitment of some sort relating to the asset. 32 character length.
+    // let assetMetadataHash = "16efaa3924a6fd9d3a4824799a4ac65d";
+    // let manager = vendor_pk.addr;
+    // // Specified address is considered the asset reserve
+    // // (it has no special privileges, this is only informational)
+    // let reserve = vendor_pk.addr;
+    // // Specified address can freeze or unfreeze user asset holdings 
+    // let freeze = vendor_pk.addr;
+    // // Specified address can revoke user asset holdings and send 
+    // // them to other addresses    
+    // let clawback = vendor_pk.addr;
 
-    // signing and sending "txn" allows "addr" to create an asset
-    let txn = algosdk.makeAssetCreateTxnWithSuggestedParams(
-        addr, 
-        note,
-        totalIssuance, 
-        decimals, 
-        defaultFrozen, 
-        manager, 
-        reserve, 
-        freeze,
-        clawback, 
-        unitName, 
-        assetName, 
-        assetURL, 
-        assetMetadataHash, 
-        params);
+    // // signing and sending "txn" allows "addr" to create an asset
+    // let txn = algosdk.makeAssetCreateTxnWithSuggestedParams(
+    //     addr, 
+    //     note,
+    //     totalIssuance, 
+    //     decimals, 
+    //     defaultFrozen, 
+    //     manager, 
+    //     reserve, 
+    //     freeze,
+    //     clawback, 
+    //     unitName, 
+    //     assetName, 
+    //     assetURL, 
+    //     assetMetadataHash, 
+    //     params);
 
-    let rawSignedTxn = txn.signTxn(vendor_pk.sk)
-    let tx = (await algodclient.sendRawTransaction(rawSignedTxn).do());
+    // let rawSignedTxn = txn.signTxn(vendor_pk.sk)
+    // let tx = (await algodclient.sendRawTransaction(rawSignedTxn).do());
 
-    let assetID = null;
-    // wait for transaction to be confirmed
-    const ptx = await algosdk.waitForConfirmation(algodclient, tx.txId, 100 );
-    // Get the new asset's information from the creator account
-    // let ptx = await algodclient.pendingTransactionInformation(tx.txId).do();
-    assetID = ptx["asset-index"];
-    //Get the completed Transaction
-    console.log("Transaction " + tx.txId + " confirmed in round " + ptx["confirmed-round"]);
+    // let assetID = null;
+    // // wait for transaction to be confirmed
+    // const ptx = await algosdk.waitForConfirmation(algodclient, tx.txId, 100 );
+    // // Get the new asset's information from the creator account
+    // // let ptx = await algodclient.pendingTransactionInformation(tx.txId).do();
+    // assetID = ptx["asset-index"];
+    // //Get the completed Transaction
+    // console.log("Transaction " + tx.txId + " confirmed in round " + ptx["confirmed-round"]);
     
    // console.log("AssetID = " + assetID);
 
@@ -355,7 +355,7 @@ let algodclient = new algosdk.Algodv2(token, server, port);
     console.log("Transaction " + opttx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
 
     //You should now see the new asset listed in the account information
-    console.log("buyer_pk = " + buyer_pk.addr);
+    console.log("buyer_pk = " + seller_pk.addr);
     await printAssetHolding(algodclient, seller_pk.addr, assetID);
 
 
@@ -489,7 +489,7 @@ let algodclient = new algosdk.Algodv2(token, server, port);
     revocationTarget = undefined;
     closeRemainderTo = undefined;
     //Amount of the asset to transfer
-    amount = 10;
+    amount = 100;
 
     // signing and sending "txn" will send "amount" assets from "sender" to "recipient"
     let xtxn = algosdk.makeAssetTransferTxnWithSuggestedParams(
@@ -511,7 +511,7 @@ let algodclient = new algosdk.Algodv2(token, server, port);
     console.log("Transaction " + xtx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
 
     // You should now see the 10 assets listed in the account information
-    console.log("buyer_pk = " + seller_pk.addr);
+    console.log("seller = " + seller_pk.addr);
     await printAssetHolding(algodclient, seller_pk.addr);
 
 
