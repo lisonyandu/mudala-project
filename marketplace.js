@@ -45,9 +45,9 @@ const printAssetHolding = async function (algodclient, account, assetid) {
 // paste in mnemonic phrases here for each account
 // Shown for demonstration purposes. NEVER reveal secret mnemonics in practice.
 
-var account1_mnemonic = "near gasp dinosaur genuine mother play festival nose despair accuse motor decade loyal able chief around bike suffer exile awkward capable roof you absorb sister";
-var account2_mnemonic = "work print sadness fortune soup seminar elbow skull tomorrow reduce camera mom flip economy alpha require season disease day bench school skin lunar about shrimp";
-var account3_mnemonic = "lizard bulk will shuffle wild bamboo public stage arrange trade carbon spring always dolphin can drastic thunder hover mind unlock airport gather stamp about can";
+var account1_mnemonic = "mesh enemy swarm oyster same foil kangaroo across biology inflict remain electric angry destroy office solid parade labor place vital link coil flavor abstract convince";
+var account2_mnemonic = "renew census border ethics fragile photo amused alone risk shop exercise aware slide chunk illness slide valid joy album culture evolve moral pretty about fantasy";
+var account3_mnemonic = "busy zebra follow brand fire victory honey addict simple spot final garbage young critic monitor buffalo muffin sting hour ticket aunt elbow slow absorb pipe";
 // var vendor_pk = '47G77X4VEFQ3NSDS2LPBM236HGGEM3IL6T7TBWIMK4LVD4K7GPVLJ7B6CI'
 // var seller_pk = 'VZN6ATQCJF3C37LM45DAVGRKS3R2VJ3K4AURNWB7U3IGAXXLGXTXNOYWXA'
 // var buyer_pk = 'SUAMEZ3XNCLU2RJIWAV6PTXIPKLLSKHXFSZ3ZOHBMDIFL3EMDFV2BATA2Y'
@@ -67,8 +67,10 @@ console.log(buyer_address);
 // var vendor_pk = `47G77X4VEFQ3NSDS2LPBM236HGGEM3IL6T7TBWIMK4LVD4K7GPVLJ7B6CI`
 // var  assetID = null; // Replace with your asset ID
 // Instantiate the algod wrapper
-let assetID = null;
+
 let algodclient = new algosdk.Algodv2(token, server, port);
+// let params = algodclient.getTransactionParams().do();
+let suggestedFeePerByte = 10;
 
 // Debug Console should look similar to this
 
@@ -77,7 +79,7 @@ async function createCarbonCreditToken() {
     let params = await algodclient.getTransactionParams().do();
     console.log(params);
     let note = undefined; // arbitrary data to be stored in the transaction; here, none is stored
-
+    let assetID = null;
     let addr = vendor_pk.addr;
     // Whether user accounts will need to be unfrozen before transacting    
     let defaultFrozen = false;
@@ -125,18 +127,127 @@ async function createCarbonCreditToken() {
 
   
     // wait for transaction to be confirmed
-    const ptx = await algosdk.waitForConfirmation(algodclient, tx.txId, 100 );
+    // const ptx = await algosdk.waitForConfirmation(algodclient, tx.txId, 100 );
     // Get the new asset's information from the creator account
-    // let ptx = await algodclient.pendingTransactionInformation(tx.txId).do();
+    let ptx = await algodclient.pendingTransactionByAddress(vendor_pk.addr).do();
     assetID = ptx["asset-index"];
     //Get the completed Transaction
     console.log("Transaction " + tx.txId + " confirmed in round " + ptx["confirmed-round"]);
-   // console.log("AssetID = " + assetID);
+   console.log(assetID)
+    return{assetID};
 }
-createCarbonCreditToken()
-// // OPT IN RECEIVE
+// createCarbonCreditToken()
+
+// const {assetID} = createCarbonCreditToken()
+assetID = 166643930;   //166644084
+// / request tokens from vendor
+async function requestTokens() {
+
+  // ask user if they want to request tokens
+  rl.question('Do you want to request additional tokens from the vendor? (y/n): ', async (answer) => {
+    if (answer.toLowerCase() === 'y') {
+         
+        // get transaction parameters
+        params = await algodclient.getTransactionParams().do();
+        sender = seller_pk.addr;
+        recipient = vendor_pk.addr;
+        revocationTarget = undefined;
+        closeRemainderTo = undefined;
+        //Amount of the asset to transfer
+        amount = 0;
+      // create note with token request message
+        const note = algosdk.encodeObj({ message: "Token request from seller" });
+      // create asset transfer transaction with suggested params and no amount
+
+       // signing and sending "txn" will send "amount" assets from "sender" to "recipient"
+      let xtxn = algosdk.makeAssetTransferTxnWithSuggestedParams(
+        sender, 
+        recipient, 
+        closeRemainderTo, 
+        revocationTarget,
+        amount,  
+        note, 
+        assetID, 
+        params);
+     // Must be signed by the account sending the asset  
+      rawSignedTxn = xtxn.signTxn(seller_pk.sk)
+      let xtx = (await algodclient.sendRawTransaction(rawSignedTxn).do());
+      txId = xtx.txId
+      console.log(`Token request transaction ID: ${txId}`);
+  
+      // wait for vendor to approve or decline request
+      waitForApproval(params, suggestedFeePerByte, note);
+    } else {
+      // close readline interface
+      rl.close();
+    }
+
+    // return{txId}
+  });
+}
+
+// wait for vendor to approve or decline request
+async function waitForApproval(params, suggestedFeePerByte, note) {
+    console.log('Waiting for vendor to approve or decline request...');
+    let confirmedTxn = null;
+    while (confirmedTxn === null) {
+      // get latest transactions for vendor account
+      const txns = await algodclient.pendingTransactionByAddress(vendor_pk.addr).do();
+      if (txns && txns['top-transactions'] && txns['top-transactions'].length > 0) {
+        const lastTxn = txns['top-transactions'];
+        const latestTxn = lastTxn[0];
+        if (latestTxn && latestTxn['txn'] && latestTxn['txn'].note) {
+          const lnote = latestTxn['txn'].note;
+          console.log(lnote);
+          if (lnote === note) {
+            // ask vendor to approve or decline request
+            const answer = await new Promise(resolve => {
+              rl.question(`Vendor, do you want to approve the request from ${seller_pk.addr}? (y/n): `, (answer) => {
+                resolve(answer.toLowerCase());
+              });
+            });
+            if (answer === 'y') {
+              // get transaction parameters
+              sender = vendor_address;
+              recipient = seller_address;
+              amount = 10;
+              // create asset transfer transaction with 10 CCT
+              const assetTransferTxn = algosdk.makeAssetTransferTxnWithSuggestedParams({
+                sender ,
+                recipient ,
+                amount, // transfer 10 CCT
+                assetID,
+                suggestedFeePerByte,
+              }, params);
+              // sign transaction with vendor private key
+              const signedTxn = assetTransferTxn.signTxn(vendor_address.sk);
+              // send transaction and log transaction ID
+              const txId = await algodclient.sendRawTransaction(signedTxn).do();
+              console.log(`Token transfer transaction ID: ${txId}`);
+              // set confirmed transaction
+              confirmedTxn = signedTxn;
+            } else {
+              // close readline interface
+              rl.close();
+            }
+          }
+        } else {
+          console.log('Error: latest transaction object or note property is undefined');
+        }
+      } else {
+        console.log('No pending transactions found for address:', vendor_pk.addr);
+      }
+      // wait for 60 seconds before checking for new transactions
+      await new Promise(resolve => setTimeout(resolve, 60000));
+    }
+  }
+// requestTokens()
+
+
+
+// OPT IN RECEIVE ASSET BY USER TYPE
 // // Define a function to handle user input
-// async function handleUserInput(userType) {
+// async function optInByUser(userType) {
 //   let sender;
 //   let recipient;
 
@@ -196,94 +307,49 @@ createCarbonCreditToken()
 // });
 
 
-async function requestAdditionalTokens() {
-  // get transaction parameters
-  params = await algodclient.getTransactionParams().do();
-  sender = seller_pk.addr;
-  recipient = vendor_pk.addr;
-  revocationTarget = undefined;
-  closeRemainderTo = undefined;
-  //Amount of the asset to transfer
-  amount = 0;
-  // ask user if they want to submit a request for tokens
-  rl.question('Do you want to submit a request for additional tokens? (y/n): ', async (answer) => {
-    // if user answers "yes"
-    if (answer.toLowerCase() === 'y') {
-      // create note with token request message
-      const note = algosdk.encodeObj({ message: "Token request from seller" });
-      let xtxn = algosdk.makeAssetTransferTxnWithSuggestedParams(
-        sender, 
-        recipient, 
-        closeRemainderTo, 
-        revocationTarget,
-        amount,  
-        note, 
-        assetID, 
-        params);
-    // Must be signed by the account sending the asset  
-    rawSignedTxn = xtxn.signTxn(seller_pk.sk)
-    let xtx = (await algodclient.sendRawTransaction(rawSignedTxn).do());
+// Get Balance by specifying a user. 
 
-    // Wait for confirmation
-    // confirmedTxn = await algosdk.waitForConfirmation(algodclient, xtx.txId, 4);
-    //Get the completed Transaction
-    console.log("Transaction " + xtx.txId);
-    rl.close();
-      }
-  });
-}
-
-// call function to request additional tokens
-requestAdditionalTokens();
-
-  //  async function getTokenBalance(algodclient, address) {
-  //   try {
-  //     const isValid = algosdk.isValidAddress(address);
-  //     if (!isValid) {
-  //       console.log('Invalid address');
-  //       return null;
-  //     }
-  //     const accountInfo = await algodclient.accountInformation(address).do();
-  //     const assets = accountInfo.assets;
-  //     const tokenBalance = assets.find((asset) => asset['asset-id'] === assetID).amount;
-  //     return tokenBalance;
-  //   } catch (error) {
-  //     console.log(`Error getting token balance: ${error}`);
-  //     return null;
-  //   }
-  // }
+//    async function getTokenBalance(algodclient, address) {
+//     try {
+//       const isValid = algosdk.isValidAddress(address);
+//       if (!isValid) {
+//         console.log('Invalid address');
+//         return null;
+//       }
+//       const accountInfo = await algodclient.accountInformation(address).do();
+//       const assets = accountInfo.assets;
+//       const tokenBalance = assets.find((asset) => asset['asset-id'] === assetID).amount;
+//       return tokenBalance;
+//     } catch (error) {
+//       console.log(`Error getting token balance: ${error}`);
+//       return null;
+//     }
+//   }
   
-  // const rl = readline.createInterface({
-  //   input: process.stdin,
-  //   output: process.stdout
-  // });
   
-  // rl.question('Enter your user type (vendor, seller, or buyer): ', async function (userType) {
-  //   let address;
-  //   switch (userType) {
-  //     case 'vendor':
-  //       address = vendor_address;
-  //       break;
-  //     case 'seller':
-  //       address = seller_address;
-  //       break;
-  //     case 'buyer':
-  //       address = buyer_address;
-  //       break;
-  //     default:
-  //       console.log('Unknown user type');
-  //       rl.close();
-  //       return;
-  //   }
+//   rl.question('Enter your user type (vendor, seller, or buyer): ', async function (userType) {
+//     let address;
+//     switch (userType) {
+//       case 'vendor':
+//         address = vendor_address;
+//         break;
+//       case 'seller':
+//         address = seller_address;
+//         break;
+//       case 'buyer':
+//         address = buyer_address;
+//         break;
+//       default:
+//         console.log('Unknown user type');
+//         rl.close();
+//         return;
+//     }
     
-  //   const tokenBalance = await getTokenBalance(algodclient, address);
-  //   if (tokenBalance !== null) {
-  //     console.log(`${userType} Token balance: ${tokenBalance}`);
-  //   }
-  //   rl.close();
-  // });
+//     const tokenBalance = await getTokenBalance(algodclient, address);
+//     if (tokenBalance !== null) {
+//       console.log(`${userType} Token balance: ${tokenBalance}`);
+//     }
+//     rl.close();
+//   });
+ 
 
-// })().catch(e => {
-//     console.log(e);
-//     console.trace();
-// });
