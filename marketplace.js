@@ -181,12 +181,15 @@ async function requestTokens() {
       // wait for vendor to approve or decline request
       console.log('Waiting for vendor to approve or decline request...');
       await waitForApproval(txId, params, suggestedFeePerByte, note);
+    // ask for next action
+    askForAction();
     } else {
       // close readline interface
       rl.close();
     }
   });
 }
+
 async function waitForRound(round) {
     while (true) {
       let status = (await algodclient.status().do());
@@ -206,7 +209,7 @@ async function waitForRound(round) {
       console.log(`Waiting for block ${currentRound} to be confirmed...`);
   
       await waitForRound(currentRound);
-  
+    //   askForAction();
       // get the transaction information
       const txInfo = await algodclient.pendingTransactionInformation(txId).do();
       if (txInfo["confirmed-round"]) {
@@ -221,7 +224,7 @@ async function waitForRound(round) {
         });
       });
       console.log('Vendor answer:', answer);
-  
+      
       if (answer === 'y') {
         // opt-in to asset
         await optInAsset('seller');
@@ -272,7 +275,7 @@ async function waitForRound(round) {
       }
     }
   }
-requestTokens();
+// requestTokens();
 
 // waitForApproval()
   
@@ -323,6 +326,7 @@ async function sellCredits() {
     askForAction();
   });
 }
+  
 // sellCredits()
 // view marketplace balance
 function viewMarketBalance() {
@@ -334,6 +338,8 @@ function viewMarketBalance() {
 
 // buy carbon credits from the market
 async function buyCredits() {
+// opt-in to asset
+await optInAsset('buyer');
   // get transaction parameters
   params = await algodclient.getTransactionParams().do();
   sender = vendor_pk.addr;
@@ -353,7 +359,7 @@ async function buyCredits() {
       }
       amount = numCredits;
       // create note with buy message
-      const note = algosdk.encodeObj({ message: `Carbon credits bought from market by ${buyer.addr}` });
+      const note = algosdk.encodeObj({ message: `Carbon credits bought from market by ${buyer_pk.addr}` });
       // create asset transfer transaction with suggested params and no amount
       // create asset transfer transaction with suggested params and no amount
     let xtxn = algosdk.makeAssetTransferTxnWithSuggestedParams(
@@ -365,8 +371,8 @@ async function buyCredits() {
         note, 
         assetID, 
         params);
- //  sign transaction with buyer private key
-    rawSignedTxn = xtxn.signTxn(buyer_pk.sk)
+ //  sign transaction with vendor private key
+    rawSignedTxn = xtxn.signTxn(vendor_pk.sk)
     // send transaction and log transaction ID
     let xtx = (await algodclient.sendRawTransaction(rawSignedTxn).do());
     // console.log(`Transaction ID: ${txId}`);
@@ -386,8 +392,9 @@ async function buyCredits() {
 
 
 // ask user for action to take
+// ask user for action to take
 function askForAction() {
-    rl.question('What would you like to do? (1. Sell credits, 2. View market balance, 3. Buy credits, 4. Exit): ', (answer) => {
+    rl.question('What would you like to do? (1. Sell credits, 2. View market balance, 3. Buy credits, 4. Request tokens, 5.Approve or decline token requests, 6. Exit): ', (answer) => {
     const action = parseInt(answer);
     switch (action) {
       case 1:
@@ -400,6 +407,12 @@ function askForAction() {
         buyCredits();
         break;
       case 4:
+        requestTokens();
+        break;
+      case 5:
+        waitForApproval();
+        break;
+      case 6:
         rl.close();
         break;
       default:
@@ -409,9 +422,10 @@ function askForAction() {
     }
   });
 }
+  
 // start program
 // console.log('Welcome to Mudala platform!')
-// askForAction()
+askForAction()
 
 // OPT IN RECEIVE ASSET BY USER TYPE
 async function optInAsset(userType) {
@@ -458,50 +472,28 @@ async function optInAsset(userType) {
   }
   
   
-
-// Get Balance by specifying a user. 
-
-//    async function getTokenBalance(algodclient, address) {
-//     try {
-//       const isValid = algosdk.isValidAddress(address);
-//       if (!isValid) {
-//         console.log('Invalid address');
-//         return null;
-//       }
-//       const accountInfo = await algodclient.accountInformation(address).do();
-//       const assets = accountInfo.assets;
-//       const tokenBalance = assets.find((asset) => asset['asset-id'] === assetID).amount;
-//       return tokenBalance;
-//     } catch (error) {
-//       console.log(`Error getting token balance: ${error}`);
-//       return null;
-//     }
-//   }
+// Get Balance of specific user. 
+async function getTokenBalance(algodclient, address, assetID) {
+    try {
+      const isValid = algosdk.isValidAddress(address);
+      if (!isValid) {
+        console.log('Invalid address');
+        return null;
+      }
+      const accountInfo = await algodclient.accountInformation(address).do();
+      const assets = accountInfo.assets;
+      const tokenBalance = assets.find((asset) => asset['asset-id'] === assetID);
+      if (tokenBalance !== undefined) {
+        return tokenBalance.amount;
+      } else {
+        console.log(`Account does not hold asset with ID ${assetID}`);
+        return null;
+      }
+    } catch (error) {
+      console.log(`Error getting token balance: ${error}`);
+      return null;
+    }
+  }
   
-  
-//   rl.question('Enter your user type (vendor, seller, or buyer): ', async function (userType) {
-//     let address;
-//     switch (userType) {
-//       case 'vendor':
-//         address = vendor_address;
-//         break;
-//       case 'seller':
-//         address = seller_address;
-//         break;
-//       case 'buyer':
-//         address = buyer_address;
-//         break;
-//       default:
-//         console.log('Unknown user type');
-//         rl.close();
-//         return;
-//     }
-    
-//     const tokenBalance = await getTokenBalance(algodclient, address);
-//     if (tokenBalance !== null) {
-//       console.log(`${userType} Token balance: ${tokenBalance}`);
-//     }
-//     rl.close();
-//   });
  
 
