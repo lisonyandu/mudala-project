@@ -196,6 +196,121 @@ let algodclient = new algosdk.Algodv2(token, server, port);
 //   rl.close();
 // });
 
+// / request tokens from vendor
+async function requestTokens() {
+  // ask user if they want to request tokens
+  rl.question('Do you want to request additional tokens from the vendor? (y/n): ', async (answer) => {
+    if (answer.toLowerCase() === 'y') {
+      // get transaction parameters
+      console.log('Getting transaction parameters...');
+      const params = await algodclient.getTransactionParams().do();
+      const sender = seller_pk.addr;
+      const recipient = vendor_pk.addr;
+      const revocationTarget = undefined;
+      const closeRemainderTo = undefined;
+      //Amount of the asset to transfer
+      const amount = 0;
+      // create note with token request message
+      const note = algosdk.encodeObj({ message: "Token request from seller" });
+      // console.log('Note:', note);
+      // create asset transfer transaction with suggested params and no amount
+      console.log('Creating asset transfer transaction...');
+      const xtxn = algosdk.makeAssetTransferTxnWithSuggestedParams(
+        sender, 
+        recipient, 
+        closeRemainderTo, 
+        revocationTarget,
+        amount,  
+        note, 
+        assetID, 
+        params
+      );
+      // Must be signed by the account sending the asset  
+      console.log('Signing transaction with seller private key...');
+      const rawSignedTxn = xtxn.signTxn(seller_pk.sk);
+      console.log('Sending transaction to the network...');
+      const xtx = await algodclient.sendRawTransaction(rawSignedTxn).do();
+      const txId = xtx.txId;
+      console.log(`Token request transaction ID: ${txId}`);
+      // wait for vendor to approve or decline request
+      console.log('Waiting for vendor to approve or decline request...');
+      await waitForApproval(params, suggestedFeePerByte, note);
+    } else {
+      // close readline interface
+      rl.close();
+    }
+  });
+}
+
+requestTokens()
+// wait for vendor to approve or decline request
+async function waitForApproval(params, suggestedFeePerByte, note) {
+  console.log('Waiting for vendor to approve or decline request...');
+  let confirmedTxn = null;
+  while (confirmedTxn === null) {
+      // get latest transactions for vendor account
+      const txns = await algodclient.pendingTransactionByAddress(vendor_pk.addr).do();
+      console.log('Latest transactions:', txns);
+
+      if (txns['top-transactions'].length > 0) {
+          const lastTxn = txns['top-transactions'];
+          const latestTxn = lastTxn[0];
+          console.log('Latest transaction:', latestTxn);
+
+          if (latestTxn && latestTxn['txn'] && latestTxn['txn'].note) {
+              const lnote = latestTxn['txn'].note;
+              console.log('Latest note:', lnote);
+
+              if (lnote === note) {
+                  // ask vendor to approve or decline request
+                  const answer = await new Promise(resolve => {
+                      rl.question(`Vendor, do you want to approve the request from ${seller_pk.addr}? (y/n): `, (answer) => {
+                          resolve(answer.toLowerCase());
+                      });
+                  });
+                  console.log('Vendor answer:', answer);
+
+                  if (answer === 'y') {
+                      // get transaction parameters
+                      sender = vendor_address;
+                      recipient = seller_address;
+                      const amount = await new Promise(resolve => {
+                          rl.question(`Vendor, how many tokens do you want to transfer to ${seller_pk.addr}? `, (amount) => {
+                              resolve(parseInt(amount));
+                          });
+                      });
+                      console.log(`Vendor specified transfer amount: ${amount}`);
+                      // create asset transfer transaction with specified amount
+                      const assetTransferTxn = algosdk.makeAssetTransferTxnWithSuggestedParams({
+                          sender,
+                          recipient,
+                          amount,
+                          assetID,
+                          suggestedFeePerByte,
+                      }, params);
+                      // sign transaction with vendor private key
+                      const signedTxn = assetTransferTxn.signTxn(vendor_address.sk);
+                      // send transaction and log transaction ID
+                      const txId = await algodclient.sendRawTransaction(signedTxn).do();
+                      console.log(`Token transfer transaction ID: ${txId}`);
+                      // set confirmed transaction
+                      confirmedTxn = signedTxn;
+                  } else {
+                      // close readline interface
+                      rl.close();
+                  }
+              }
+          } else {
+              console.log('Error: latest transaction object or note property is undefined');
+          }
+      } else {
+          console.log('No pending transactions found for address:', vendor_pk.addr);
+      }
+      // wait for 60 seconds before checking for new transactions
+      await new Promise(resolve => setTimeout(resolve, 60000));
+  }
+}
+
 
 // async function requestAdditionalTokens() {
 //   // get transaction parameters
