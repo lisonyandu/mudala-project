@@ -263,18 +263,15 @@ async function waitForRound(round) {
         confirmedTxn = await algosdk.waitForConfirmation(algodclient, xtx.txId, 4);
         //Get the completed Transaction
         console.log("Transaction " + xtx.txId + " confirmed in round " + confirmedTxn["confirmed-round"])
-        console.log(`Waiting for block ${xtx['confirmed-round']} to be confirmed...`);
-        await waitForRound(xtx['confirmed-round']);
+        console.log(`Vendor has successfully transferred ${amount} CCT to the seller`);
+        // console.log(`Waiting for block ${xtx['confirmed-round']} to be confirmed...`);
+        // await waitForRound(xtx['confirmed-round']);
       } else {
         console.log('Vendor declined the request.');
         break;
       }
     }
   }
-  
-  
-  
-
 requestTokens();
 
 // waitForApproval()
