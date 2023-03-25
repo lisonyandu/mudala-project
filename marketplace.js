@@ -198,6 +198,7 @@ async function waitForRound(round) {
   }
   
   async function waitForApproval(txId, params, fee, note) {
+
     while (true) {
       // wait for the next block
       const status = await algodclient.status().do();
@@ -222,27 +223,48 @@ async function waitForRound(round) {
       console.log('Vendor answer:', answer);
   
       if (answer === 'y') {
+        // opt-in to asset
+        await optInAsset('seller');
+
         // get transaction parameters
+        const params = await algodclient.getTransactionParams().do();
         const sender = vendor_address;
         const recipient = seller_address;
+        const revocationTarget = undefined;
+        const closeRemainderTo = undefined;
+        const fee = 10;
         const amount = await new Promise(resolve => {
           rl.question(`Vendor, how many tokens do you want to transfer to ${seller_pk.addr}? `, (amount) => {
             resolve(parseInt(amount));
           });
         });
+  
         console.log(`Vendor specified transfer amount: ${amount}`);
+  
         // create asset transfer transaction with specified amount
-        const assetTransferTxn = algosdk.makeAssetTransferTxnWithSuggestedParams(
-          sender,
-          recipient,
-          amount,
-          assetID,
-         params);
-        // sign transaction with vendor private key
-        const signedTxn = assetTransferTxn.signTxn(vendor_pk.sk);
-        // send transaction and log transaction ID
-        const txId = await algodclient.sendRawTransaction(signedTxn).do();
-        console.log(`Token transfer transaction ID: ${txId}`);
+        const xtxn = algosdk.makeAssetTransferTxnWithSuggestedParams(
+            sender, 
+            recipient, 
+            closeRemainderTo, 
+            revocationTarget,
+            amount,  
+            note, 
+            assetID, 
+            params
+        );
+  
+        // Must be signed by the account sending the asset  
+        console.log('Signing transaction with vendor private key...');
+        const rawSignedTxn = xtxn.signTxn(vendor_pk.sk);
+        console.log('Sending transaction to the network...');
+        const xtx = await algodclient.sendRawTransaction(rawSignedTxn).do();
+        console.log(`Token transfer transaction ID: ${xtx.txId}`);
+        // Wait for confirmation
+        confirmedTxn = await algosdk.waitForConfirmation(algodclient, xtx.txId, 4);
+        //Get the completed Transaction
+        console.log("Transaction " + xtx.txId + " confirmed in round " + confirmedTxn["confirmed-round"])
+        console.log(`Waiting for block ${xtx['confirmed-round']} to be confirmed...`);
+        await waitForRound(xtx['confirmed-round']);
       } else {
         console.log('Vendor declined the request.');
         break;
@@ -250,8 +272,10 @@ async function waitForRound(round) {
     }
   }
   
+  
+  
 
-// requestTokens();
+requestTokens();
 
 // waitForApproval()
   
@@ -389,76 +413,54 @@ function askForAction() {
   });
 }
 // start program
-console.log('Welcome to Mudala platform!')
-askForAction()
-
-
-
-
-
-
+// console.log('Welcome to Mudala platform!')
+// askForAction()
 
 // OPT IN RECEIVE ASSET BY USER TYPE
-// Define a function to handle user input
-// async function optInByUser(userType) {
-//   let sender;
-//   let recipient;
-//   let note;
-//   if (userType === 'buyer') {
-//     sender = buyer_address;
-//     recipient = sender;
-//   } else if (userType === 'seller') {
-//     // Define seller account
-//     // const seller_pk = algosdk.mnemonicToSecretKey("seller mnemonic"); // replace with your seller account's mnemonic
-//     sender = seller_address;
-//     recipient = sender;
-//   } else {
-//     console.log('Invalid user type. Please enter "buyer" or "seller".');
-//     return;
-//   }
-
-//   // We set revocationTarget to undefined as 
-//   // This is not a clawback operation
-//   const revocationTarget = undefined;
-//   // CloseReaminerTo is set to undefined as
-//   // we are not closing out an asset
-//   const closeRemainderTo = undefined;
-//   // We are sending 0 assets
-//   const amount = 0;
-//   // signing and sending "txn" allows sender to begin accepting asset specified by creator and index
-//   const params = await algodclient.getTransactionParams().do();
-//   const opttxn = algosdk.makeAssetTransferTxnWithSuggestedParams(
-//     sender, 
-//     recipient, 
-//     closeRemainderTo, 
-//     revocationTarget,
-//     amount, 
-//     note, 
-//     assetID, 
-//     params
-//   );
-
-//   // Must be signed by the account wishing to opt in to the asset    
-//   const privateKey = userType === 'seller' ? seller_pk.sk : buyer_pk.sk;
-//   const rawSignedTxn = opttxn.signTxn(privateKey);
-//   const opttx = await algodclient.sendRawTransaction(rawSignedTxn).do();
-//   // Wait for confirmation
-//   const confirmedTxn = await algosdk.waitForConfirmation(algodclient, opttx.txId, 4);
-//   //Get the completed Transaction
-//   //Get the completed Transaction
-//   console.log("Transaction " + opttx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
-
-//   //You should now see the new asset listed in the account information
-//   console.log(`${userType}_pk = ${sender}`);
-//   await printAssetHolding(algodclient, sender, assetID);
-// }
-
-// // Prompt the user to enter the user type and opt-in
-// rl.question('If you want to opt in to receive asset, specify your user type (buyer or seller) and then opt in: ', async (userType) => {
-//   await optInByUser(userType.trim().toLowerCase());
-//   rl.close();
-// });
-// optInByUser()
+async function optInAsset(userType) {
+    let sender;
+    let recipient;
+    let note;
+    if (userType === 'buyer') {
+      sender = buyer_address;
+      recipient = sender;
+    } else if (userType === 'seller') {
+      sender = seller_address;
+      recipient = sender;
+    } else {
+      console.log('Invalid user type. Please enter "buyer" or "seller".');
+      return;
+    }
+  
+    const revocationTarget = undefined;
+    const closeRemainderTo = undefined;
+    const amount = 0;
+    const params = await algodclient.getTransactionParams().do();
+    const opttxn = algosdk.makeAssetTransferTxnWithSuggestedParams(
+      sender, 
+      recipient, 
+      closeRemainderTo, 
+      revocationTarget,
+      amount, 
+      note, 
+      assetID, 
+      params
+    );
+  
+    const privateKey = userType === 'seller' ? seller_pk.sk : buyer_pk.sk;
+    const rawSignedTxn = opttxn.signTxn(privateKey);
+    const opttx = await algodclient.sendRawTransaction(rawSignedTxn).do();
+    const confirmedTxn = await algosdk.waitForConfirmation(algodclient, opttx.txId, 4);
+  
+    console.log("Transaction " + opttx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
+  
+    // console.log(`${sender} successfully opted in to receive asset with ID: ${assetID}`);
+    console.log(`Address:  ${sender} has successfully opted in to receive asset with ID: ${assetID}`);
+    // console.log(`${userType}_pk = ${sender}`);
+    // await printAssetHolding(algodclient, sender, assetID);
+  }
+  
+  
 
 // Get Balance by specifying a user. 
 
