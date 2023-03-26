@@ -226,6 +226,10 @@ async function waitForRound(round) {
       console.log('Vendor answer:', answer);
       
       if (answer === 'y') {
+
+        const vendorBalance_b4 = await getTokenBalance(algodclient, vendor_address, assetID);
+        console.log(`Vendor's current token balance: ${vendorBalance_b4}`);
+
         // opt-in to asset
         await optInAsset('seller');
 
@@ -267,6 +271,9 @@ async function waitForRound(round) {
         //Get the completed Transaction
         console.log("Transaction " + xtx.txId + " confirmed in round " + confirmedTxn["confirmed-round"])
         console.log(`Vendor has successfully transferred ${amount} CCT to the seller`);
+
+        const vendorBalance = await getTokenBalance(algodclient, vendor_address, assetID);
+        console.log(`Vendor's latest token balance: ${vendorBalance}`);
         // console.log(`Waiting for block ${xtx['confirmed-round']} to be confirmed...`);
         // await waitForRound(xtx['confirmed-round']);
       } else {
@@ -286,6 +293,9 @@ let marketBalance = 0;
 
 // sell carbon credits to the market
 async function sellCredits() {
+ 
+const sellerBalance = await getTokenBalance(algodclient, seller_address, assetID);
+console.log(`Seller's current token balance: ${sellerBalance}`);
   // get transaction parameters
   params = await algodclient.getTransactionParams().do();
   sender = seller_pk.addr;
@@ -322,12 +332,15 @@ async function sellCredits() {
     console.log("Transaction " + xtx.txId + " confirmed in round " + confirmedTxn["confirmed-round"])
     // update marketplace balance
     marketBalance += numCredits;
+
+    const sellerBalance = await getTokenBalance(algodclient, seller_address, assetID);
+    console.log(`Seller's latest token balance: ${sellerBalance}`);
     // ask user for next action
     askForAction();
   });
 }
   
-// sellCredits()
+sellCredits()
 // view marketplace balance
 function viewMarketBalance() {
   console.log(`Marketplace balance: ${marketBalance}`);
@@ -338,6 +351,9 @@ function viewMarketBalance() {
 
 // buy carbon credits from the market
 async function buyCredits() {
+
+const buyerBalance = await getTokenBalance(algodclient, buyer_address, assetID);
+console.log(`Buyer's current token balance: ${buyerBalance}`);
 // opt-in to asset
 await optInAsset('buyer');
   // get transaction parameters
@@ -383,6 +399,10 @@ await optInAsset('buyer');
 
     // update marketplace balance
     marketBalance -= numCredits;
+   
+    const buyerBalance = await getTokenBalance(algodclient, buyer_address, assetID);
+    console.log(`Buyer's latest token balance: ${buyerBalance}`);
+
     // ask user for next action
     askForAction();
   });
@@ -425,7 +445,7 @@ function askForAction() {
   
 // start program
 // console.log('Welcome to Mudala platform!')
-askForAction()
+// askForAction()
 
 // OPT IN RECEIVE ASSET BY USER TYPE
 async function optInAsset(userType) {
@@ -480,20 +500,24 @@ async function getTokenBalance(algodclient, address, assetID) {
         console.log('Invalid address');
         return null;
       }
+    //   console.log(`Getting token balance for address: ${address}`);
       const accountInfo = await algodclient.accountInformation(address).do();
       const assets = accountInfo.assets;
       const tokenBalance = assets.find((asset) => asset['asset-id'] === assetID);
       if (tokenBalance !== undefined) {
+        // console.log(`Token balance for asset with ID ${assetID}: ${tokenBalance.amount} CCT`);
+        balance = tokenBalance.amount;
         return tokenBalance.amount;
       } else {
+        console.log(`Token balance for asset with ID ${assetID}: 0 CCT`);
         console.log(`Account does not hold asset with ID ${assetID}`);
-        return null;
+        return 0; // set token balance to 0 if user does not hold the asset
       }
     } catch (error) {
       console.log(`Error getting token balance: ${error}`);
       return null;
     }
-  }
-  
+}
  
+
 
