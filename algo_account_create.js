@@ -3,10 +3,10 @@
 
 const algosdk = require('algosdk');
 
-//only load the .env file if the server isn’t started in production mode
-if (process.env.NODE_ENV !== 'production') {
-  require('dotenv').config();
-}
+// //only load the .env file if the server isn’t started in production mode
+// if (process.env.NODE_ENV !== 'production') {
+//   require('dotenv').config();
+// }
 
 // In order to do an ASA tutorial, we will need to generate 3 accounts
 // once created, copy off the values which we will paste into the tutorial code
@@ -114,15 +114,15 @@ const checkAccountBalances = async () => {
   console.log('Account 1 Info: ' + acct_string);
   console.log('Balance of account 1: ' + JSON.stringify(account_info.amount));
 
-  account_info = await algodclient.accountInformation(account2).do();
-  acct_string = JSON.stringify(account_info);
-  console.log('Account 2 Info: ' + acct_string);
-  console.log('Balance of account 2: ' + JSON.stringify(account_info.amount));
+  // account_info = await algodclient.accountInformation(account2).do();
+  // acct_string = JSON.stringify(account_info);
+  // console.log('Account 2 Info: ' + acct_string);
+  // console.log('Balance of account 2: ' + JSON.stringify(account_info.amount));
 
-  account_info = await algodclient.accountInformation(account3).do();
-  acct_string = JSON.stringify(account_info);
-  console.log('Account 3 Info: ' + acct_string);
-  console.log('Balance of account 3: ' + JSON.stringify(account_info.amount));
+  // account_info = await algodclient.accountInformation(account3).do();
+  // acct_string = JSON.stringify(account_info);
+  // console.log('Account 3 Info: ' + acct_string);
+  // console.log('Balance of account 3: ' + JSON.stringify(account_info.amount));
 };
 
 //------/Query account objects on the network------\\

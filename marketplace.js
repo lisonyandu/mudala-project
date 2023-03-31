@@ -48,23 +48,26 @@ const printAssetHolding = async function (algodclient, account, assetid) {
 var account1_mnemonic = "mesh enemy swarm oyster same foil kangaroo across biology inflict remain electric angry destroy office solid parade labor place vital link coil flavor abstract convince";
 var account2_mnemonic = "renew census border ethics fragile photo amused alone risk shop exercise aware slide chunk illness slide valid joy album culture evolve moral pretty about fantasy";
 var account3_mnemonic = "busy zebra follow brand fire victory honey addict simple spot final garbage young critic monitor buffalo muffin sting hour ticket aunt elbow slow absorb pipe";
-// var vendor_pk = '47G77X4VEFQ3NSDS2LPBM236HGGEM3IL6T7TBWIMK4LVD4K7GPVLJ7B6CI'
+var account4_mnemonic = "proud decade wheat audit verify year inquiry nothing legal human galaxy turkey brown index leaf ride runway inch fresh fury order twist couple abandon shell";
+// var regulator_pk = '47G77X4VEFQ3NSDS2LPBM236HGGEM3IL6T7TBWIMK4LVD4K7GPVLJ7B6CI'
 // var seller_pk = 'VZN6ATQCJF3C37LM45DAVGRKS3R2VJ3K4AURNWB7U3IGAXXLGXTXNOYWXA'
 // var buyer_pk = 'SUAMEZ3XNCLU2RJIWAV6PTXIPKLLSKHXFSZ3ZOHBMDIFL3EMDFV2BATA2Y'
 
-var vendor_pk = algosdk.mnemonicToSecretKey(account1_mnemonic);
+var regulator_pk = algosdk.mnemonicToSecretKey(account1_mnemonic);
 var seller_pk = algosdk.mnemonicToSecretKey(account2_mnemonic);
 var buyer_pk = algosdk.mnemonicToSecretKey(account3_mnemonic);
+var vendor_pk = algosdk.mnemonicToSecretKey(account4_mnemonic);
 
-const vendor_address = vendor_pk.addr;
+const regulator_address = regulator_pk.addr;
 const seller_address = seller_pk.addr;
 const buyer_address = buyer_pk.addr;
+const vendor_address = vendor_pk.addr;
 
 // console.log(vendor_address);
 // console.log(seller_address);
 // console.log(buyer_address);
 
-// var vendor_pk = `47G77X4VEFQ3NSDS2LPBM236HGGEM3IL6T7TBWIMK4LVD4K7GPVLJ7B6CI`
+// var regulator = `47G77X4VEFQ3NSDS2LPBM236HGGEM3IL6T7TBWIMK4LVD4K7GPVLJ7B6CI`
 // var  assetID = null; // Replace with your asset ID
 // Instantiate the algod wrapper
 
@@ -80,7 +83,7 @@ async function createCarbonCreditToken() {
     console.log(params);
     let note = undefined; // arbitrary data to be stored in the transaction; here, none is stored
     let assetID = null;
-    let addr = vendor_pk.addr;
+    let addr = regulator_pk.addr;
     // Whether user accounts will need to be unfrozen before transacting    
     let defaultFrozen = false;
     // integer number of decimals for asset unit calculation
@@ -95,15 +98,15 @@ async function createCarbonCreditToken() {
     let assetURL = "http://localhost:8080/";
     // Optional hash commitment of some sort relating to the asset. 32 character length.
     let assetMetadataHash = "16efaa3924a6fd9d3a4824799a4ac65d";
-    let manager = vendor_pk.addr;
+    let manager = regulator_pk.addr;
     // Specified address is considered the asset reserve
     // (it has no special privileges, this is only informational)
-    let reserve = vendor_pk.addr;
+    let reserve = regulator_pk.addr;
     // Specified address can freeze or unfreeze user asset holdings 
-    let freeze = vendor_pk.addr;
+    let freeze = regulator_pk.addr;
     // Specified address can revoke user asset holdings and send 
     // them to other addresses    
-    let clawback = vendor_pk.addr;
+    let clawback = regulator_pk.addr;
 
     // signing and sending "txn" allows "addr" to create an asset
     let txn = algosdk.makeAssetCreateTxnWithSuggestedParams(
@@ -122,14 +125,14 @@ async function createCarbonCreditToken() {
         assetMetadataHash, 
         params);
 
-    let rawSignedTxn = txn.signTxn(vendor_pk.sk)
+    let rawSignedTxn = txn.signTxn(regulator.sk)
     let tx = (await algodclient.sendRawTransaction(rawSignedTxn).do());
 
   
     // wait for transaction to be confirmed
     // const ptx = await algosdk.waitForConfirmation(algodclient, tx.txId, 100 );
     // Get the new asset's information from the creator account
-    let ptx = await algodclient.pendingTransactionByAddress(vendor_pk.addr).do();
+    let ptx = await algodclient.pendingTransactionByAddress(regulator_pk.addr).do();
     assetID = ptx["asset-index"];
     //Get the completed Transaction
     console.log("Transaction " + tx.txId + " confirmed in round " + ptx["confirmed-round"]);
@@ -145,13 +148,13 @@ let txId;
 
 async function requestTokens() {
   // ask user if they want to request tokens
-  rl.question('Do you want to request additional tokens from the vendor? (y/n): ', async (answer) => {
+  rl.question('Do you want to request additional tokens from the regulator? (y/n): ', async (answer) => {
     if (answer.toLowerCase() === 'y') {
       // get transaction parameters
       console.log('Getting transaction parameters...');
       const params = await algodclient.getTransactionParams().do();
       const sender = seller_pk.addr;
-      const recipient = vendor_pk.addr;
+      const recipient = regulator_pk.addr;
       const revocationTarget = undefined;
       const closeRemainderTo = undefined;
       //Amount of the asset to transfer
@@ -179,7 +182,7 @@ async function requestTokens() {
       txId = xtx.txId;
       console.log(`Token request transaction ID: ${txId}`);
       // wait for vendor to approve or decline request
-      console.log('Waiting for vendor to approve or decline request...');
+      console.log('Waiting for regulator to approve or decline request...');
       await waitForApproval(txId, params, suggestedFeePerByte, note);
     // ask for next action
     askForAction();
@@ -217,36 +220,36 @@ async function waitForRound(round) {
         break;
       }
   
-      // ask the vendor to approve or decline the request
+      // ask the regulator to approve or decline the request
       const answer = await new Promise(resolve => {
-        rl.question(`Vendor, do you want to approve the request from ${seller_pk.addr}? (y/n): `, (answer) => {
+        rl.question(`Regulator, do you want to approve the request from ${seller_pk.addr}? (y/n): `, (answer) => {
           resolve(answer.toLowerCase());
         });
       });
-      console.log('Vendor answer:', answer);
+      console.log('Regulator answer:', answer);
       
       if (answer === 'y') {
 
         const vendorBalance_b4 = await getTokenBalance(algodclient, vendor_address, assetID);
-        console.log(`Vendor's current token balance: ${vendorBalance_b4}`);
+        console.log(`Regulator's current token balance: ${vendorBalance_b4}`);
 
         // opt-in to asset
         await optInAsset('seller');
 
         // get transaction parameters
         const params = await algodclient.getTransactionParams().do();
-        const sender = vendor_address;
+        const sender = regulator_address;
         const recipient = seller_address;
         const revocationTarget = undefined;
         const closeRemainderTo = undefined;
         const fee = 10;
         const amount = await new Promise(resolve => {
-          rl.question(`Vendor, how many tokens do you want to transfer to ${seller_pk.addr}? `, (amount) => {
+          rl.question(`Regulator, how many tokens do you want to transfer to ${seller_pk.addr}? `, (amount) => {
             resolve(parseInt(amount));
           });
         });
   
-        console.log(`Vendor specified transfer amount: ${amount}`);
+        console.log(`Regulator specified transfer amount: ${amount}`);
   
         // create asset transfer transaction with specified amount
         const xtxn = algosdk.makeAssetTransferTxnWithSuggestedParams(
@@ -261,8 +264,8 @@ async function waitForRound(round) {
         );
   
         // Must be signed by the account sending the asset  
-        console.log('Signing transaction with vendor private key...');
-        const rawSignedTxn = xtxn.signTxn(vendor_pk.sk);
+        console.log('Signing transaction with regulator private key...');
+        const rawSignedTxn = xtxn.signTxn(regulator_pk.sk);
         console.log('Sending transaction to the network...');
         const xtx = await algodclient.sendRawTransaction(rawSignedTxn).do();
         console.log(`Token transfer transaction ID: ${xtx.txId}`);
@@ -270,14 +273,14 @@ async function waitForRound(round) {
         confirmedTxn = await algosdk.waitForConfirmation(algodclient, xtx.txId, 4);
         //Get the completed Transaction
         console.log("Transaction " + xtx.txId + " confirmed in round " + confirmedTxn["confirmed-round"])
-        console.log(`Vendor has successfully transferred ${amount} CCT to the seller`);
+        console.log(`Regulator has successfully transferred ${amount} CCT to the seller`);
 
         const vendorBalance = await getTokenBalance(algodclient, vendor_address, assetID);
-        console.log(`Vendor's latest token balance: ${vendorBalance}`);
+        console.log(`Regulator's latest token balance: ${vendorBalance}`);
         // console.log(`Waiting for block ${xtx['confirmed-round']} to be confirmed...`);
         // await waitForRound(xtx['confirmed-round']);
       } else {
-        console.log('Vendor declined the request.');
+        console.log('Regulator declined the request.');
         break;
       }
     }
