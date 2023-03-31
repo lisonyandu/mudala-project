@@ -296,7 +296,7 @@ let marketBalance = 0;
 
 // sell carbon credits to the market
 async function sellCredits() {
- 
+  await optInAsset('vendor');
 const sellerBalance = await getTokenBalance(algodclient, seller_address, assetID);
 console.log(`Seller's current token balance: ${sellerBalance}`);
   // get transaction parameters
@@ -461,8 +461,11 @@ async function optInAsset(userType) {
     } else if (userType === 'seller') {
       sender = seller_address;
       recipient = sender;
-    } else {
-      console.log('Invalid user type. Please enter "buyer" or "seller".');
+    } else if (userType === 'vendor') {
+      sender = vendor_address;
+      recipient = sender;
+    }else {
+      console.log('Invalid user type. Please enter "buyer" or "seller" or "vendor".');
       return;
     }
   
