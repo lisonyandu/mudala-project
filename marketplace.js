@@ -63,9 +63,10 @@ const seller_address = seller_pk.addr;
 const buyer_address = buyer_pk.addr;
 const vendor_address = vendor_pk.addr;
 
-// console.log(vendor_address);
-// console.log(seller_address);
+// console.log(regulator_address);
+console.log(seller_address);
 // console.log(buyer_address);
+console.log(vendor_address);
 
 // var regulator = `47G77X4VEFQ3NSDS2LPBM236HGGEM3IL6T7TBWIMK4LVD4K7GPVLJ7B6CI`
 // var  assetID = null; // Replace with your asset ID
@@ -147,51 +148,82 @@ assetID = 166644084;   //166644084
 let txId;
 
 async function requestTokens() {
-  // ask user if they want to request tokens
-  rl.question('Do you want to request additional tokens from the regulator? (y/n): ', async (answer) => {
-    if (answer.toLowerCase() === 'y') {
-      // get transaction parameters
-      console.log('Getting transaction parameters...');
-      const params = await algodclient.getTransactionParams().do();
-      const sender = seller_pk.addr;
-      const recipient = regulator_pk.addr;
-      const revocationTarget = undefined;
-      const closeRemainderTo = undefined;
-      //Amount of the asset to transfer
-      const amount = 0;
-      // create note with token request message
-      const note = algosdk.encodeObj({ message: "Token request from seller" });
-      // console.log('Note:', note);
-      // create asset transfer transaction with suggested params and no amount
-      console.log('Creating asset transfer transaction...');
-      const xtxn = algosdk.makeAssetTransferTxnWithSuggestedParams(
-        sender, 
-        recipient, 
-        closeRemainderTo, 
-        revocationTarget,
-        amount,  
-        note, 
-        assetID, 
-        params
-      );
-      // Must be signed by the account sending the asset  
-      console.log('Signing transaction with seller private key...');
-      const rawSignedTxn = xtxn.signTxn(seller_pk.sk);
-      console.log('Sending transaction to the network...');
-      const xtx = await algodclient.sendRawTransaction(rawSignedTxn).do();
-      txId = xtx.txId;
-      console.log(`Token request transaction ID: ${txId}`);
-      // wait for vendor to approve or decline request
-      console.log('Waiting for regulator to approve or decline request...');
-      await waitForApproval(txId, params, suggestedFeePerByte, note);
-    // ask for next action
-    askForAction();
-    } else {
-      // close readline interface
-      rl.close();
-    }
-  });
+  try {
+    // ask user if they want to request tokens
+    rl.question('Do you want to request additional tokens from the regulator? (y/n): ', async (answer) => {
+      if (answer.toLowerCase() === 'y') {
+        // get transaction parameters
+        console.log('Getting transaction parameters...');
+        let params;
+        try {
+          params = await algodclient.getTransactionParams().do();
+        } catch (error) {
+          console.error('Error getting transaction parameters:', error);
+          return;
+        }
+
+        const sender = seller_pk.addr;
+        const recipient = regulator_pk.addr;
+        const revocationTarget = undefined;
+        const closeRemainderTo = undefined;
+        //Amount of the asset to transfer
+        const amount = 0;
+        // create note with token request message
+        let note;
+        try {
+          note = algosdk.encodeObj({ message: "Token request from seller" });
+        } catch (error) {
+          console.error('Error encoding note:', error);
+          return;
+        }
+        // console.log('Note:', note);
+        // create asset transfer transaction with suggested params and no amount
+        console.log('Creating asset transfer transaction...');
+        const xtxn = algosdk.makeAssetTransferTxnWithSuggestedParams(
+          sender, 
+          recipient, 
+          closeRemainderTo, 
+          revocationTarget,
+          amount,  
+          note, 
+          assetID, 
+          params
+        );
+        // Must be signed by the account sending the asset  
+        console.log('Signing transaction with seller private key...');
+        const rawSignedTxn = xtxn.signTxn(seller_pk.sk);
+        console.log('Sending transaction to the network...');
+        let xtx;
+        try {
+          xtx = await algodclient.sendRawTransaction(rawSignedTxn).do();
+        } catch (error) {
+          console.error('Error sending transaction to the network:', error);
+          return;
+        }
+        const txId = xtx.txId;
+        console.log(`Token request transaction ID: ${txId}`);
+        // wait for regulator to approve or decline request
+        console.log('Waiting for regulator to approve or decline request...');
+        try {
+          await waitForApproval(txId, params, suggestedFeePerByte, note);
+        } catch (error) {
+          console.error('Error getting regulator approval:', error);
+          return;
+        }
+        // ask for next action
+        askForAction();
+      } else {
+        // close readline interface
+        rl.close();
+      }
+    });
+  } catch (error) {
+    console.error('Error in requestTokens:', error);
+    return;
+  }
 }
+
+
 
 async function waitForRound(round) {
     while (true) {
@@ -293,12 +325,14 @@ async function waitForRound(round) {
 
 // set up marketplace balance
 let marketBalance = 0;
+const tokensPerAlgo = 100;
+
 
 // sell carbon credits to the market
 async function sellCredits() {
   await optInAsset('vendor');
-const sellerBalance = await getTokenBalance(algodclient, seller_address, assetID);
-console.log(`Seller's current token balance: ${sellerBalance}`);
+  const sellerBalance = await getTokenBalance(algodclient, seller_address, assetID);
+  console.log(`Seller's current token balance: ${sellerBalance}`);
   // get transaction parameters
   params = await algodclient.getTransactionParams().do();
   sender = seller_pk.addr;
@@ -335,15 +369,22 @@ console.log(`Seller's current token balance: ${sellerBalance}`);
     console.log("Transaction " + xtx.txId + " confirmed in round " + confirmedTxn["confirmed-round"])
     // update marketplace balance
     marketBalance += numCredits;
-
     const sellerBalance = await getTokenBalance(algodclient, seller_address, assetID);
+    // update seller's Algo balance
+    const algoAmount = amount / tokensPerAlgo;
+    const sellerAlgoBalance = await algodclient.accountInformation(sender).do();
+    const sellerNewAlgoBalance = sellerAlgoBalance.amount + algoAmount;
+    console.log(`Seller's latest Algo balance: ${sellerNewAlgoBalance}`);
     console.log(`Seller's latest token balance: ${sellerBalance}`);
     // ask user for next action
     askForAction();
   });
 }
+
+
+
   
-sellCredits()
+// sellCredits()
 // view marketplace balance
 function viewMarketBalance() {
   console.log(`Marketplace balance: ${marketBalance}`);
@@ -447,55 +488,54 @@ function askForAction() {
 }
   
 // start program
-// console.log('Welcome to Mudala platform!')
-// askForAction()
+console.log('Welcome to Mudala platform!')
+askForAction()
 
 // OPT IN RECEIVE ASSET BY USER TYPE
 async function optInAsset(userType) {
-    let sender;
-    let recipient;
-    let note;
-    if (userType === 'buyer') {
-      sender = buyer_address;
-      recipient = sender;
-    } else if (userType === 'seller') {
-      sender = seller_address;
-      recipient = sender;
-    } else if (userType === 'vendor') {
-      sender = vendor_address;
-      recipient = sender;
-    }else {
-      console.log('Invalid user type. Please enter "buyer" or "seller" or "vendor".');
-      return;
-    }
+  let sender;
+  let recipient;
+  let note;
   
-    const revocationTarget = undefined;
-    const closeRemainderTo = undefined;
-    const amount = 0;
-    const params = await algodclient.getTransactionParams().do();
-    const opttxn = algosdk.makeAssetTransferTxnWithSuggestedParams(
-      sender, 
-      recipient, 
-      closeRemainderTo, 
-      revocationTarget,
-      amount, 
-      note, 
-      assetID, 
-      params
-    );
-  
-    const privateKey = userType === 'seller' ? seller_pk.sk : buyer_pk.sk;
-    const rawSignedTxn = opttxn.signTxn(privateKey);
-    const opttx = await algodclient.sendRawTransaction(rawSignedTxn).do();
-    const confirmedTxn = await algosdk.waitForConfirmation(algodclient, opttx.txId, 4);
-  
-    console.log("Transaction " + opttx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
-  
-    // console.log(`${sender} successfully opted in to receive asset with ID: ${assetID}`);
-    console.log(`Address:  ${sender} has successfully opted in to receive asset with ID: ${assetID}`);
-    // console.log(`${userType}_pk = ${sender}`);
-    // await printAssetHolding(algodclient, sender, assetID);
+  if (userType === 'buyer') {
+    sender = buyer_address;
+    recipient = sender;
+  } else if (userType === 'seller') {
+    sender = seller_address;
+    recipient = sender;
+  } else if (userType === 'vendor') {
+    sender = vendor_address;
+    recipient = sender;
+  } else {
+    console.log('Invalid user type. Please enter "buyer" or "seller" or "vendor".');
+    return;
   }
+
+  const revocationTarget = undefined;
+  const closeRemainderTo = undefined;
+  const amount = 0;
+  const params = await algodclient.getTransactionParams().do();
+  const opttxn = algosdk.makeAssetTransferTxnWithSuggestedParams(
+    sender, 
+    recipient, 
+    closeRemainderTo, 
+    revocationTarget,
+    amount, 
+    note, 
+    assetID, 
+    params
+  );
+
+  const privateKey = userType === 'seller' ? seller_pk.sk : userType === 'buyer' ? buyer_pk.sk : vendor_pk.sk;
+  const rawSignedTxn = opttxn.signTxn(privateKey);
+  const opttx = await algodclient.sendRawTransaction(rawSignedTxn).do();
+  const confirmedTxn = await algosdk.waitForConfirmation(algodclient, opttx.txId, 4);
+
+  console.log("Transaction " + opttx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
+
+  console.log(`Address: ${sender} has successfully opted in to receive asset with ID: ${assetID}`);
+}
+
   
   
 // Get Balance of specific user. 
