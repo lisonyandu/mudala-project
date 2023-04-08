@@ -67,3 +67,8 @@ src/js/_DS_Store
 static/images/produce_images
 
 sandbox/
+
+#dababase stuff
+/public
+database.db
+dbconfig.json

@@ -64,9 +64,9 @@ const buyer_address = buyer_pk.addr;
 const vendor_address = vendor_pk.addr;
 
 // console.log(regulator_address);
-console.log(seller_address);
+// console.log(seller_address);
 // console.log(buyer_address);
-console.log(vendor_address);
+// console.log(vendor_address);
 
 // var regulator = `47G77X4VEFQ3NSDS2LPBM236HGGEM3IL6T7TBWIMK4LVD4K7GPVLJ7B6CI`
 // var  assetID = null; // Replace with your asset ID
@@ -126,7 +126,7 @@ async function createCarbonCreditToken() {
         assetMetadataHash, 
         params);
 
-    let rawSignedTxn = txn.signTxn(regulator.sk)
+    let rawSignedTxn = txn.signTxn(regulator_pk.sk)
     let tx = (await algodclient.sendRawTransaction(rawSignedTxn).do());
 
   
@@ -223,7 +223,7 @@ async function requestTokens() {
   }
 }
 
-
+// requestTokens()
 
 async function waitForRound(round) {
     while (true) {
@@ -308,7 +308,7 @@ async function waitForRound(round) {
         console.log(`Regulator has successfully transferred ${amount} CCT to the seller`);
 
         const vendorBalance = await getTokenBalance(algodclient, vendor_address, assetID);
-        console.log(`Regulator's latest token balance: ${vendorBalance}`);
+        // console.log(`Regulator's latest token balance: ${vendorBalance}`);
         // console.log(`Waiting for block ${xtx['confirmed-round']} to be confirmed...`);
         // await waitForRound(xtx['confirmed-round']);
       } else {
