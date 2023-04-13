@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@perawallet/connect": "^1.2.3",
     "algosdk": "^2.1.0",
     "cors": "^2.8.5",
     "express": "^4.18.2",

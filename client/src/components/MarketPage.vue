@@ -165,6 +165,8 @@ let web3 = new Web3(window.ethereum);
 import CarbonCreditToken from "@/artifacts/CarbonCreditToken.json"
 import Vendor from "@/artifacts/Vendor.json"
 import axios from "axios";
+import { PeraConnect } from '@perawallet/pera-connect';
+const peraConnect = new PeraConnect({ chainId: 416002 });
 
 export default {
   props: {
@@ -187,18 +189,15 @@ export default {
 
     const connectWallet = async () => {
       try {
-        const data = await window.ethereum.request({
-          method: 'eth_requestAccounts',
-        })
-        console.log('data :>> ', data)
-        // this.userAddress = data[0]
-        walletStore.saveWalletData(data[0])
+        const accounts = await peraConnect.enable();
+        console.log('Connected to wallet:', accounts[0]);
+        // Save the user's address to your store or state management
+        walletStore.saveWalletData(accounts[0]);
         this.membertype = null;
-        console.log('DApp connected to your wallet 💰')
       } catch (error) {
-        console.error('Error connecting DApp to your wallet')
+        console.error('Error connecting to wallet:', error);
       }
-    }
+    };
     return {
       connectWallet,
       walletStore,
