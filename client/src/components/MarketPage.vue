@@ -165,8 +165,8 @@ let web3 = new Web3(window.ethereum);
 import CarbonCreditToken from "@/artifacts/CarbonCreditToken.json"
 import Vendor from "@/artifacts/Vendor.json"
 import axios from "axios";
-import { PeraConnect } from '@perawallet/pera-connect';
-const peraConnect = new PeraConnect({ chainId: 416002 });
+import { PeraWalletConnect } from '@perawallet/connect';
+const peraWallet = new PeraWalletConnect({ chainId: 416002 });
 
 export default {
   props: {
@@ -185,11 +185,11 @@ export default {
     }
   },
   setup() {
-    const walletStore = useWalletStore()
-
+    const walletStore = useWalletStore();
+  
     const connectWallet = async () => {
       try {
-        const accounts = await peraConnect.enable();
+        const accounts = await peraWallet.connect();
         console.log('Connected to wallet:', accounts[0]);
         // Save the user's address to your store or state management
         walletStore.saveWalletData(accounts[0]);
@@ -198,9 +198,11 @@ export default {
         console.error('Error connecting to wallet:', error);
       }
     };
+
     return {
       connectWallet,
       walletStore,
+      peraWallet
     }
   },
   mounted() {
