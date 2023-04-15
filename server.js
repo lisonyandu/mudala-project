@@ -7,6 +7,7 @@ const algosdk = require('algosdk');
 const {algod, indexer,algoWeb3} = require('algosdk');
 const fs = require("fs");
 const { Account } = require('algosdk');
+require('dotenv').config();
 
 
 const initModels = require("./models/init-models");
@@ -15,13 +16,12 @@ const {Sequelize} = require("sequelize");
 const statuses = require("./utils/statuses");
 const marketplace = require('./carbon_credit_token/marketplace');
 
-const token = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-const server = "http://localhost";
-const port = 4001;
-let algodclient = new algosdk.Algodv2(token, server, port);
-// const HOST = "0.0.0.0";
-var accounts;
-
+const apiKey = process.env.TESTNET_ALGOD_API_KEY;
+const token = process.env.DEV_ALGOD_API_KEY;
+const server = process.env.DEV_ALGOD_SERVER;
+const port = process.env.DEV_ALGOD_PORT;
+const PORT = process.env.PORT;
+const algodServer = process.env.TESTNET_ALGOD_SERVER;
 const app = express();
 app.use(express.static("public"));
 app.use(express.json());
@@ -32,17 +32,16 @@ app.get("/", (req, res) => {
     res.send("Welcome the API is running");
 });
 
-
 app.use("/member", memberRouter);
 app.use("/validator", validatorRouter);
-
 const axios = require('axios');
 
-const algodToken = 'r94PDzuErj1go6Q0Nr5y6qfmJxGLN3H8JkLFo08d';
-const algodServer = 'https://testnet-algorand.api.purestake.io/ps2';
+var accounts;
 const headers = {
-  'X-API-Key': algodToken,
+  'X-API-Key': apiKey,
 };
+
+let algodclient = new algosdk.Algodv2(token, server, port);
 
 async function getBlock(blockNumber) {
   try {
@@ -113,8 +112,8 @@ sequelise
 sequelise
     .sync()
     .then(() => {
-        app.listen(3000);
-        console.log(`App running on ${server}:${port}`);
+        app.listen(PORT);
+        console.log(`App running on ${server}:${PORT}`);
     })
     .catch((err) => console.log("Error synching models: " + err));
 
