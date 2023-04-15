@@ -54,7 +54,7 @@ var account4_mnemonic = "proud decade wheat audit verify year inquiry nothing le
 // var buyer_pk = 'SUAMEZ3XNCLU2RJIWAV6PTXIPKLLSKHXFSZ3ZOHBMDIFL3EMDFV2BATA2Y'
 
 var regulator_pk = algosdk.mnemonicToSecretKey(account1_mnemonic);
-var seller_pk = algosdk.mnemonicToSecretKey(c);
+var seller_pk = algosdk.mnemonicToSecretKey(account2_mnemonic);
 var buyer_pk = algosdk.mnemonicToSecretKey(account3_mnemonic);
 var vendor_pk = algosdk.mnemonicToSecretKey(account4_mnemonic);
 

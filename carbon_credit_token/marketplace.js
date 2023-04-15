@@ -63,6 +63,13 @@ const seller_address = seller_pk.addr;
 const buyer_address = buyer_pk.addr;
 const vendor_address = vendor_pk.addr;
 
+const accounts = [
+  { name: 'regulator', pk: algosdk.mnemonicToSecretKey(account1_mnemonic) },
+  { name: 'seller', pk: algosdk.mnemonicToSecretKey(account2_mnemonic) },
+  { name: 'buyer', pk: algosdk.mnemonicToSecretKey(account3_mnemonic) },
+  { name: 'vendor', pk: algosdk.mnemonicToSecretKey(account4_mnemonic) }
+];
+
 
 // var regulator = `47G77X4VEFQ3NSDS2LPBM236HGGEM3IL6T7TBWIMK4LVD4K7GPVLJ7B6CI`
 // var  assetID = null; // Replace with your asset ID
@@ -132,11 +139,14 @@ async function createCarbonCreditToken() {
     let ptx = await algodclient.pendingTransactionByAddress(regulator_pk.addr).do();
     assetID = ptx["asset-index"];
     //Get the completed Transaction
-    console.log("Transaction " + tx.txId + " confirmed in round " + ptx["confirmed-round"]);
-   console.log(assetID)
+    // console.log("Transaction " + tx.txId + " confirmed in round " + ptx["confirmed-round"]);
+    // console.log(assetID)
+        // Print total supply and balance for the created asset
+    await printCreatedAsset(algodclient, regulator_pk.addr, assetID);
+      await printAssetHolding(algodclient, regulator_pk.addr, assetID);
     return{assetID};
 }
-// createCarbonCreditToken()
+createCarbonCreditToken()
 
 // const {assetID} = createCarbonCreditToken()
 assetID = 166644084;   //166644084
@@ -484,8 +494,8 @@ function askForAction() {
 }
   
 // start program
-console.log('Welcome to Mudala platform!')
-askForAction()
+// console.log('Welcome to Mudala platform!')
+// askForAction()
 
 // OPT IN RECEIVE ASSET BY USER TYPE
 async function optInAsset(userType) {
@@ -561,5 +571,13 @@ async function getTokenBalance(algodclient, address, assetID) {
     }
 }
  
-
+module.exports = {
+  requestTokens,
+  getTokenBalance,
+  optInAsset,
+  waitForApproval,
+  waitForRound,
+  createCarbonCreditToken
+  // ...
+};
 
