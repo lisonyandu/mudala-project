@@ -53,7 +53,7 @@ let suggestedFeePerByte = 10;
 
 // Debug Console should look similar to this
 
-async function createCarbonCreditToken() {
+async function createCarbonCreditToken(regulator_address) {
   let params = await algodclient.getTransactionParams().do();
   console.log(params);
   let note = undefined; // arbitrary data to be stored in the transaction; here, none is stored
@@ -111,37 +111,50 @@ async function createCarbonCreditToken() {
   assetID = ptx["asset-index"];
 
   // Print created asset information
-  printCreatedAsset(algodclient, regulator_pk.addr, assetID);
-  // printAssetHolding(algodclient, regulator_pk.addr, assetID);
-  
+  // totalSupply(algodclient, regulator_pk.addr, assetID);
+  // balanceOf(algodclient, regulator_pk.addr, assetID);
+  return {
+    assetID
+  }
 }
+// createCarbonCreditToken(regulator_pk)
 
 // Function used to print created asset for account and assetid
-const printCreatedAsset = async function (algodclient, account, assetid) {
+const totalSupply = async function (algodclient, account, assetid) {
+  let total_supply
   let accountInfo = await algodclient.accountInformation(account).do();
   for (idx = 0; idx < accountInfo['created-assets'].length; idx++) {
     let scrutinizedAsset = accountInfo['created-assets'][idx];
     if (scrutinizedAsset['index'] == assetid) {
-      console.log(`Balance of asset ID ${assetid}: ${scrutinizedAsset['params']['total']}`);
-      console.log(`Total supply of asset ID ${assetid}: ${scrutinizedAsset['params']['total']}`);
+      total_supply = scrutinizedAsset['params']['total'];
       break;
     }
   }
+  return {
+    total_supply
+  };
 };
 
-const printAssetHolding = async function (algodclient, account, assetid) {
+
+const balanceOf = async function (algodclient, account, assetid) {
+  let balance;
   let accountInfo = await algodclient.accountInformation(account).do();
   for (idx = 0; idx < accountInfo['assets'].length; idx++) {
     let scrutinizedAsset = accountInfo['assets'][idx];
     if (scrutinizedAsset['asset-id'] == assetid) {
-      console.log(`Balance of asset ID ${assetid} for account ${account}: ${scrutinizedAsset['amount']}`);
-      console.log(`Total supply of asset ID ${assetid}: ${scrutinizedAsset['params']['total']}`);
+      balance = scrutinizedAsset['amount'];
       break;
     }
   }
+  return {
+    balance
+  };
 };
+
 // createCarbonCreditToken();
 assetID = 166644084;
+totalSupply(algodclient, regulator_address, assetID);
+balanceOf(algodclient, regulator_address, assetID);
 // printCreatedAsset(algodclient, regulator_pk.addr, assetID);  
 // const {assetID} = createCarbonCreditToken()
 assetID = 166644084;   //166644084
@@ -572,7 +585,10 @@ module.exports = {
   optInAsset,
   waitForApproval,
   waitForRound,
-  createCarbonCreditToken
+  createCarbonCreditToken,
+  balanceOf,
+  totalSupply
+
   // ...
 };
 

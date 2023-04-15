@@ -57,11 +57,28 @@ let algodclient = new algosdk.Algodv2(token, server, port);
 //   .then((data) => console.log(data))
 //   .catch((error) => console.error(error));
 
+const reg_addr = process.env.ACCOUNT1_ADDRESS
+
+app.get("/api/validator", async (req, res) => {
+    const assetID = await marketplace.createCarbonCreditToken(reg_addr);
+    console.log(assetID);
+    const balance = await marketplace.balanceOf(algodclient, reg_addr, assetID.assetID);
+    console.log(balance);
+    const total = await marketplace.totalSupply(algodclient, reg_addr, assetID.assetID);
+    console.log(total);
+    res.send({
+      totalsupply: total.total_supply,
+      balance: balance.balance,
+      wallet: reg_addr,
+    });
+  });
+  
 
 app.get("/api/totalsupply", async (req, res) => {
     try {
-        const val = await CarbonCreditToken.methods.totalSupply().call();
-        res.send({balance: val / 10 ** 18});
+        const assetID = await marketplace.createCarbonCreditToken(reg_addr);
+        const val = await marketplace.totalSupply(algodclient, reg_addr, assetID.assetID);
+        res.send({balance: val});
     } catch (e) {
         console.log(e.message)
     }
@@ -69,10 +86,10 @@ app.get("/api/totalsupply", async (req, res) => {
 
 app.get("/api/balance", async (req, res) => {
     try {
-        const val = await CarbonCreditToken.methods
+        const assetID = await marketplace.createCarbonCreditToken(reg_addr);
+        const val = await marketplace.balanceOf(algodclient, reg_addr, assetID.assetID)
             .balanceOf(req.body.address)
-            .call();
-        res.send({balance: val / 10 ** 18});
+        res.send({balance: val});
     } catch (e) {
         console.log(e.message)
     }
@@ -80,14 +97,13 @@ app.get("/api/balance", async (req, res) => {
 
 app.post("/api/myaccount", async (req, res) => {
     try {
+        const assetID = await marketplace.createCarbonCreditToken(reg_addr);
         const member = await models.RegisteredMembers.findOne({
             where: {pk: req.body.memberid},
         });
-        const val = await CarbonCreditToken.methods
-            .balanceOf(member.walletaddress)
-            .call();
+        const val = await marketplace.balanceOf(algodclient,member.walletaddress,assetID.assetID)
         res.send({
-            balance: val / 10 ** 18,
+            balance: val,
             membertype: member.membertype,
             projectid: member.projectid,
             taxid: member.taxid
