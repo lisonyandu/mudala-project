@@ -43,19 +43,19 @@ const headers = {
 
 let algodclient = new algosdk.Algodv2(token, server, port);
 
-async function getBlock(blockNumber) {
-  try {
-    const response = await axios.get(`${algodServer}/v2/blocks/${blockNumber}`, { headers });
-    return response.data;
-  } catch (error) {
-    console.error(error);
-    return null;
-  }
-}
+// async function getBlock(blockNumber) {
+//   try {
+//     const response = await axios.get(`${algodServer}/v2/blocks/${blockNumber}`, { headers });
+//     return response.data;
+//   } catch (error) {
+//     console.error(error);
+//     return null;
+//   }
+// }
 
-getBlock(1)
-  .then((data) => console.log(data))
-  .catch((error) => console.error(error));
+// getBlock(1)
+//   .then((data) => console.log(data))
+//   .catch((error) => console.error(error));
 
 
 app.get("/api/totalsupply", async (req, res) => {

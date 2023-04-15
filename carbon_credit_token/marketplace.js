@@ -12,34 +12,6 @@ const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
 });
-// Function used to print created asset for account and assetid
-const printCreatedAsset = async function (algodclient, account, assetid) {
-
-    let accountInfo = await algodclient.accountInformation(account).do();
-    for (idx = 0; idx < accountInfo['created-assets'].length; idx++) {
-        let scrutinizedAsset = accountInfo['created-assets'][idx];
-        if (scrutinizedAsset['index'] == assetid) {
-            console.log("AssetID = " + scrutinizedAsset['index']);
-            let myparms = JSON.stringify(scrutinizedAsset['params'], undefined, 2);
-            console.log("parms = " + myparms);
-            break;
-        }
-    }
-};
-// Function used to print asset holding for account and assetid
-const printAssetHolding = async function (algodclient, account, assetid) {
-
-    let accountInfo = await algodclient.accountInformation(account).do();
-    for (idx = 0; idx < accountInfo['assets'].length; idx++) {
-        let scrutinizedAsset = accountInfo['assets'][idx];
-        if (scrutinizedAsset['asset-id'] == assetid) {
-            let myassetholding = JSON.stringify(scrutinizedAsset, undefined, 2);
-            console.log("assetholdinginfo = " + myassetholding);
-            break;
-        }
-    }
-};
-
 
 // Recover accounts
 // paste in mnemonic phrases here for each account
@@ -82,72 +54,95 @@ let suggestedFeePerByte = 10;
 // Debug Console should look similar to this
 
 async function createCarbonCreditToken() {
-   
-    let params = await algodclient.getTransactionParams().do();
-    console.log(params);
-    let note = undefined; // arbitrary data to be stored in the transaction; here, none is stored
-    let assetID = null;
-    let addr = regulator_pk.addr;
-    // Whether user accounts will need to be unfrozen before transacting    
-    let defaultFrozen = false;
-    // integer number of decimals for asset unit calculation
-    let decimals = 2;
-    // total number of this asset available for circulation   
-    let totalIssuance = 1000;
-    // Used to display asset units to user    
-    let unitName = "CCT";
-    // Friendly name of the asset    
-    let assetName = "CarbonCreditToken";
-    // Optional string pointing to a URL relating to the asset
-    let assetURL = "http://localhost:8080/";
-    // Optional hash commitment of some sort relating to the asset. 32 character length.
-    let assetMetadataHash = "16efaa3924a6fd9d3a4824799a4ac65d";
-    let manager = regulator_pk.addr;
-    // Specified address is considered the asset reserve
-    // (it has no special privileges, this is only informational)
-    let reserve = regulator_pk.addr;
-    // Specified address can freeze or unfreeze user asset holdings 
-    let freeze = regulator_pk.addr;
-    // Specified address can revoke user asset holdings and send 
-    // them to other addresses    
-    let clawback = regulator_pk.addr;
+  let params = await algodclient.getTransactionParams().do();
+  console.log(params);
+  let note = undefined; // arbitrary data to be stored in the transaction; here, none is stored
+  let assetID = null;
+  let addr = regulator_pk.addr;
+  // Whether user accounts will need to be unfrozen before transacting    
+  let defaultFrozen = false;
+  // integer number of decimals for asset unit calculation
+  let decimals = 2;
+  // total number of this asset available for circulation   
+  let totalIssuance = 1000;
+  // Used to display asset units to user    
+  let unitName = "CCT";
+  // Friendly name of the asset    
+  let assetName = "CarbonCreditToken";
+  // Optional string pointing to a URL relating to the asset
+  let assetURL = "http://localhost:8080/";
+  // Optional hash commitment of some sort relating to the asset. 32 character length.
+  let assetMetadataHash = "16efaa3924a6fd9d3a4824799a4ac65d";
+  let manager = regulator_pk.addr;
+  // Specified address is considered the asset reserve
+  // (it has no special privileges, this is only informational)
+  let reserve = regulator_pk.addr;
+  // Specified address can freeze or unfreeze user asset holdings 
+  let freeze = regulator_pk.addr;
+  // Specified address can revoke user asset holdings and send 
+  // them to other addresses    
+  let clawback = regulator_pk.addr;
 
-    // signing and sending "txn" allows "addr" to create an asset
-    let txn = algosdk.makeAssetCreateTxnWithSuggestedParams(
-        addr, 
-        note,
-        totalIssuance, 
-        decimals, 
-        defaultFrozen, 
-        manager, 
-        reserve, 
-        freeze,
-        clawback, 
-        unitName, 
-        assetName, 
-        assetURL, 
-        assetMetadataHash, 
-        params);
+  // signing and sending "txn" allows "addr" to create an asset
+  let txn = algosdk.makeAssetCreateTxnWithSuggestedParams(
+    addr, 
+    note,
+    totalIssuance, 
+    decimals, 
+    defaultFrozen, 
+    manager, 
+    reserve, 
+    freeze,
+    clawback, 
+    unitName, 
+    assetName, 
+    assetURL, 
+    assetMetadataHash, 
+    params
+  );
 
-    let rawSignedTxn = txn.signTxn(regulator_pk.sk)
-    let tx = (await algodclient.sendRawTransaction(rawSignedTxn).do());
+  let rawSignedTxn = txn.signTxn(regulator_pk.sk)
+  let tx = (await algodclient.sendRawTransaction(rawSignedTxn).do());
 
+  // wait for transaction to be confirmed
+  const ptx = await algosdk.waitForConfirmation(algodclient, tx.txId, 100 );
+  // Get the new asset's information from the creator account
+  // let ptx = await algodclient.pendingTransactionByAddress(regulator_pk.addr).do();
+  assetID = ptx["asset-index"];
+
+  // Print created asset information
+  printCreatedAsset(algodclient, regulator_pk.addr, assetID);
+  // printAssetHolding(algodclient, regulator_pk.addr, assetID);
   
-    // wait for transaction to be confirmed
-    // const ptx = await algosdk.waitForConfirmation(algodclient, tx.txId, 100 );
-    // Get the new asset's information from the creator account
-    let ptx = await algodclient.pendingTransactionByAddress(regulator_pk.addr).do();
-    assetID = ptx["asset-index"];
-    //Get the completed Transaction
-    // console.log("Transaction " + tx.txId + " confirmed in round " + ptx["confirmed-round"]);
-    // console.log(assetID)
-        // Print total supply and balance for the created asset
-    await printCreatedAsset(algodclient, regulator_pk.addr, assetID);
-      await printAssetHolding(algodclient, regulator_pk.addr, assetID);
-    return{assetID};
 }
-createCarbonCreditToken()
 
+// Function used to print created asset for account and assetid
+const printCreatedAsset = async function (algodclient, account, assetid) {
+  let accountInfo = await algodclient.accountInformation(account).do();
+  for (idx = 0; idx < accountInfo['created-assets'].length; idx++) {
+    let scrutinizedAsset = accountInfo['created-assets'][idx];
+    if (scrutinizedAsset['index'] == assetid) {
+      console.log(`Balance of asset ID ${assetid}: ${scrutinizedAsset['params']['total']}`);
+      console.log(`Total supply of asset ID ${assetid}: ${scrutinizedAsset['params']['total']}`);
+      break;
+    }
+  }
+};
+
+const printAssetHolding = async function (algodclient, account, assetid) {
+  let accountInfo = await algodclient.accountInformation(account).do();
+  for (idx = 0; idx < accountInfo['assets'].length; idx++) {
+    let scrutinizedAsset = accountInfo['assets'][idx];
+    if (scrutinizedAsset['asset-id'] == assetid) {
+      console.log(`Balance of asset ID ${assetid} for account ${account}: ${scrutinizedAsset['amount']}`);
+      console.log(`Total supply of asset ID ${assetid}: ${scrutinizedAsset['params']['total']}`);
+      break;
+    }
+  }
+};
+// createCarbonCreditToken();
+assetID = 166644084;
+// printCreatedAsset(algodclient, regulator_pk.addr, assetID);  
 // const {assetID} = createCarbonCreditToken()
 assetID = 166644084;   //166644084
 
