@@ -161,12 +161,21 @@ import {useWalletStore} from '@/stores/wallet'
 import Web3 from "web3";
 
 let web3 = new Web3(window.ethereum);
+// const algosdk = require('algosdk');
+// let algodclient = new algosdk.Algodv2(token, server, port);
+// const apiKey = process.env.TESTNET_ALGOD_API_KEY;
+// const token = process.env.DEV_ALGOD_API_KEY;
+// const server = process.env.DEV_ALGOD_SERVER;
+// const port = process.env.DEV_ALGOD_PORT;
+// const PORT = process.env.PORT;
+// const algodServer = process.env.TESTNET_ALGOD_SERVER;
 
 import CarbonCreditToken from "@/artifacts/CarbonCreditToken.json"
 import Vendor from "@/artifacts/Vendor.json"
 import axios from "axios";
 import { PeraWalletConnect } from '@perawallet/connect';
 const peraWallet = new PeraWalletConnect({ chainId: 416002 });
+// import {marketplace} from'.../carbon_credit_token/marketplace';
 
 export default {
   props: {

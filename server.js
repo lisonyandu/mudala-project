@@ -15,13 +15,23 @@ const models = initModels(sequelise);
 const {Sequelize} = require("sequelize");
 const statuses = require("./utils/statuses");
 const marketplace = require('./carbon_credit_token/marketplace');
+const carbonToken = require('./carbon_credit_token/carbonCreditToken');
 
-const apiKey = process.env.TESTNET_ALGOD_API_KEY;
-const token = process.env.DEV_ALGOD_API_KEY;
-const server = process.env.DEV_ALGOD_SERVER;
-const port = process.env.DEV_ALGOD_PORT;
+// const apiKey = process.env.TESTNET_ALGOD_API_KEY;
+// const token = process.env.DEV_ALGOD_API_KEY;
+// const server = process.env.DEV_ALGOD_SERVER;
+// const port = process.env.DEV_ALGOD_PORT;
 const PORT = process.env.PORT;
+const HOST = "0.0.0.0";
 const algodServer = process.env.TESTNET_ALGOD_SERVER;
+// sandbox
+const token = { 'X-API-Key': process.env.TESTNET_ALGOD_API_KEY }; // for local environment use const token = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+const server = process.env.TESTNET_ALGOD_SERVER; //for local environment use 'http://localhost', for TestNet use PureStake "https://testnet-algorand.api.purestake.io/ps2" or AlgoExplorer "https://api.testnet.algoexplorer.io",
+const port = process.env.TESTNET_ALGOD_PORT; // for local environment use 4001;
+
+let algodclient = new algosdk.Algodv2(token, server, port);
+
+
 const app = express();
 app.use(express.static("public"));
 app.use(express.json());
@@ -37,11 +47,6 @@ app.use("/validator", validatorRouter);
 const axios = require('axios');
 
 var accounts;
-const headers = {
-  'X-API-Key': apiKey,
-};
-
-let algodclient = new algosdk.Algodv2(token, server, port);
 
 // async function getBlock(blockNumber) {
 //   try {
@@ -60,11 +65,11 @@ let algodclient = new algosdk.Algodv2(token, server, port);
 const reg_addr = process.env.ACCOUNT1_ADDRESS
 
 app.get("/api/validator", async (req, res) => {
-    const assetID = await marketplace.createCarbonCreditToken(reg_addr);
+    const assetID = await carbonToken.createCarbonCreditToken(reg_addr);
     console.log(assetID);
-    const balance = await marketplace.balanceOf(algodclient, reg_addr, assetID.assetID);
+    const balance = await carbonToken.balanceOf(algodclient, reg_addr, assetID.assetID);
     console.log(balance);
-    const total = await marketplace.totalSupply(algodclient, reg_addr, assetID.assetID);
+    const total = await carbonToken.totalSupply(algodclient, reg_addr, assetID.assetID);
     console.log(total);
     res.send({
       totalsupply: total.total_supply,
@@ -76,8 +81,8 @@ app.get("/api/validator", async (req, res) => {
 
 app.get("/api/totalsupply", async (req, res) => {
     try {
-        const assetID = await marketplace.createCarbonCreditToken(reg_addr);
-        const val = await marketplace.totalSupply(algodclient, reg_addr, assetID.assetID);
+        const assetID = await carbonToken.createCarbonCreditToken(reg_addr);
+        const val = await carbonToken.totalSupply(algodclient, reg_addr, assetID.assetID);
         res.send({balance: val});
     } catch (e) {
         console.log(e.message)
@@ -86,8 +91,8 @@ app.get("/api/totalsupply", async (req, res) => {
 
 app.get("/api/balance", async (req, res) => {
     try {
-        const assetID = await marketplace.createCarbonCreditToken(reg_addr);
-        const val = await marketplace.balanceOf(algodclient, reg_addr, assetID.assetID)
+        const assetID = await carbonToken.createCarbonCreditToken(reg_addr);
+        const val = await carbonToken.balanceOf(algodclient, reg_addr, assetID.assetID)
             .balanceOf(req.body.address)
         res.send({balance: val});
     } catch (e) {
@@ -117,7 +122,7 @@ sequelise
   .authenticate()
   .then(async () => {
     console.log("Database connected...");
-    const accounts = await Account.findAll();
+    const accounts = await algodclient.accounts;
     console.log('Account info:', accounts);
     // Do something with the accounts data here...
   })
