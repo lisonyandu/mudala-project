@@ -122,7 +122,7 @@ async function requestTokens() {
   }
 }
 
-requestTokens()
+// requestTokens()
 
 async function waitForRound(round) {
     while (true) {

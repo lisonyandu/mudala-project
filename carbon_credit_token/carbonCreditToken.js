@@ -1,5 +1,4 @@
 const algosdk = require('algosdk');
-const readline = require('readline');
 require('dotenv').config();
 // Retrieve the token, server and port values for your installation in the 
 // algod.net and algod.token files within the data directory
@@ -8,6 +7,7 @@ require('dotenv').config();
 const token = process.env.DEV_ALGOD_API_KEY;
 const server = process.env.DEV_ALGOD_SERVER;
 const port = process.env.DEV_ALGOD_PORT;
+
 
 let algodclient = new algosdk.Algodv2(token, server, port);
 
@@ -93,7 +93,7 @@ async function createCarbonCreditToken(regulator_pk) {
     assetID
   }
 }
-createCarbonCreditToken(regulator_pk)
+// createCarbonCreditToken(regulator_pk)
 
 // Function used to print created asset  total supply for account and assetid
 const totalSupply = async function (algodclient, account, assetid) {
@@ -129,6 +129,8 @@ const balanceOf = async function (algodclient, account, assetid) {
   };
 };
 
+balanceOf(algodclient, regulator_address, 166644084)
+totalSupply(algodclient, regulator_address, 166644084)
 module.exports = {
   createCarbonCreditToken,
   balanceOf,

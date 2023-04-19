@@ -6,7 +6,7 @@ import { createPinia } from 'pinia'
 import axios from "axios";
 
 axios.defaults.withCredentials = false;
-axios.defaults.baseURL = "http://localhost:4003/";
+axios.defaults.baseURL = "http://localhost:3000/";
 
 import router from "./router";
 

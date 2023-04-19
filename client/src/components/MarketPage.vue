@@ -161,22 +161,22 @@ import {useWalletStore} from '@/stores/wallet'
 import Web3 from "web3";
 
 let web3 = new Web3(window.ethereum);
-// const algosdk = require('algosdk');
-// let algodclient = new algosdk.Algodv2(token, server, port);
-// const apiKey = process.env.TESTNET_ALGOD_API_KEY;
-// const token = process.env.DEV_ALGOD_API_KEY;
-// const server = process.env.DEV_ALGOD_SERVER;
-// const port = process.env.DEV_ALGOD_PORT;
-// const PORT = process.env.PORT;
-// const algodServer = process.env.TESTNET_ALGOD_SERVER;
 
 import CarbonCreditToken from "@/artifacts/CarbonCreditToken.json"
 import Vendor from "@/artifacts/Vendor.json"
 import axios from "axios";
 import { PeraWalletConnect } from '@perawallet/connect';
 const peraWallet = new PeraWalletConnect({ chainId: 416002 });
-// import {marketplace} from'.../carbon_credit_token/marketplace';
+// import marketplace from '../../carbon_credit_token/marketplace';
+// import { carbonToken } from '../../../carbon_credit_token/carbonCreditToken';
 
+// sandbox
+// const token = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+// const server = "http://localhost";
+// const port = "";
+// let algodclient = new algosdk.Algodv2(token, server, port);
+// const algosdk = require('algosdk');
+// const assetID = 166644084;
 export default {
   props: {
     title: String,
@@ -194,24 +194,23 @@ export default {
     }
   },
   setup() {
-    const walletStore = useWalletStore();
-  
+    const walletStore = useWalletStore()
+
     const connectWallet = async () => {
       try {
-        const accounts = await peraWallet.connect();
-        console.log('Connected to wallet:', accounts[0]);
-        // Save the user's address to your store or state management
-        walletStore.saveWalletData(accounts[0]);
+        const data  = await peraWallet.connect();
+        console.log('data :>> ', data)
+        // this.userAddress = data[0]
+        walletStore.saveWalletData(data[0])
         this.membertype = null;
+        console.log('DApp connected to your wallet 💰')
       } catch (error) {
-        console.error('Error connecting to wallet:', error);
+        console.error('Error connecting DApp to your wallet')
       }
-    };
-
+    }
     return {
       connectWallet,
       walletStore,
-      peraWallet
     }
   },
   mounted() {
@@ -328,18 +327,19 @@ export default {
     async myAccount(wallet) {
 
       try {
-        const accounts = await web3.eth.getAccounts();
-        console.log(`your account ${accounts[0]}`)
-        const tokenContract = new web3.eth.Contract(
-            CarbonCreditToken.abi,
-            process.env.VUE_APP_TOKEN_CONTRACT_ADDRESS
-        );
+        // const accounts = await web3.eth.getAccounts();
+        // const accounts = await algodclient.accounts;
+        // console.log(`your account ${accounts[0]}`)
+        // console.log(accounts)
 
-        const val = await tokenContract.methods
-            .balanceOf(wallet)
-            .call();
+        // const tokenContract = new web3.eth.Contract(
+        //     CarbonCreditToken.abi,
+        //     process.env.VUE_APP_TOKEN_CONTRACT_ADDRESS
+        // );
 
-        this.myCCTbalance = val / 10 ** 18
+        // const val = await carbonToken.balanceOf(algodclient, wallet, assetID);
+
+        this.myCCTbalance = 0;
 
         axios.post('/member/registrationdata', {
           walletaddress: wallet
