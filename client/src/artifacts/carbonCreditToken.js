@@ -132,8 +132,8 @@ const balanceOf = async function (algodclient, account, assetid) {
   };
 };
 
-balanceOf(algodclient, buyer_address, 166644084)
-totalSupply(algodclient, buyer_address, 166644084)
+balanceOf(algodclient, regulator_address, 166644084)
+totalSupply(algodclient, regulator_address, 166644084)
 module.exports = {
   createCarbonCreditToken,
   balanceOf,

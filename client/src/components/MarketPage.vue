@@ -161,22 +161,28 @@ import {useWalletStore} from '@/stores/wallet'
 import Web3 from "web3";
 
 let web3 = new Web3(window.ethereum);
-
+const algosdk = require('algosdk');
 import CarbonCreditToken from "@/artifacts/CarbonCreditToken.json"
 import Vendor from "@/artifacts/Vendor.json"
 import axios from "axios";
-import { PeraWalletConnect } from '@perawallet/connect';
-const peraWallet = new PeraWalletConnect({ chainId: 416002 });
-// import marketplace from '../../carbon_credit_token/marketplace';
-// import { carbonToken } from '../../../carbon_credit_token/carbonCreditToken';
+// import { peraWallet  } from '@perawallet/connect';
+//import PeraWalletConnect from "@perawallet/connect";
+// import PeraWalletConnect from '@perawallet/connect';
+import { PeraWalletConnect } from "@perawallet/connect";
+
+// const peraWallet = new PeraWalletConnect({ chainId: 416002 });
+import { balanceOf } from '../../../carbon_credit_token/carbonCreditToken';
 
 // sandbox
-// const token = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-// const server = "http://localhost";
-// const port = "";
-// let algodclient = new algosdk.Algodv2(token, server, port);
-// const algosdk = require('algosdk');
-// const assetID = 166644084;
+const token = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+const server = "http://localhost";
+const port = 4001;
+let algodclient = new algosdk.Algodv2(token, server, port);
+
+console.log(algodclient)
+const assetID = 166644084;
+// console.log("correct?",carbonToken.balanceOf(algodclient,"CK6IKHX2YTKF372EM653WSR4OOWN3BZLVBETXQEZV6TNE3HC5QF3MZ7RZA", 166644084))
+
 export default {
   props: {
     title: String,
@@ -193,32 +199,68 @@ export default {
       taxid: null,
     }
   },
-  setup() {
-    const walletStore = useWalletStore()
 
-    const connectWallet = async () => {
-      try {
-        const data  = await peraWallet.connect();
-        console.log('data :>> ', data)
-        // this.userAddress = data[0]
-        walletStore.saveWalletData(data[0])
-        this.membertype = null;
-        console.log('DApp connected to your wallet 💰')
-      } catch (error) {
-        console.error('Error connecting DApp to your wallet')
+  setup() {
+  const walletStore = useWalletStore();
+
+  const connectWallet = async () => {
+    try {
+      // Initialize the PeraWallet object with the correct chain ID
+      const peraWallet = new PeraWalletConnect({ chainId: 416002 });
+
+      // Check if the user is already logged in
+      const accounts = await peraWallet.accounts;
+
+      if (accounts !== undefined && accounts.length > 0) {
+        const userAddress = accounts[0];
+        walletStore.saveWalletData(userAddress);
+        console.log("DApp connected to your wallet 💰");
+      } else {
+        // If the user is not logged in, prompt them to connect their wallet
+        await peraWallet.connect();
+        // Get the user's account after connection
+        const accounts = await peraWallet.accounts;
+
+        if (accounts !== undefined && accounts.length > 0) {
+          const userAddress = accounts[0];
+          walletStore.saveWalletData(userAddress);
+          console.log("DApp connected to your wallet 💰");
+        } else {
+          console.log("No account found");
+        }
       }
+
+      // Reconnect the wallet session to check for any changes
+      peraWallet.connector.on("disconnect", () => {
+        console.log("Wallet disconnected");
+        // Handle wallet disconnection
+      });
+      peraWallet.reconnectSession().then((accounts) => {
+        if (accounts !== undefined && accounts.length > 0) {
+          const userAddress = accounts[0];
+          walletStore.saveWalletData(userAddress);
+          console.log("Wallet session reconnected 💰");
+        }
+      });
+
+    } catch (error) {
+      console.error("Error connecting DApp to your wallet:", error);
     }
-    return {
-      connectWallet,
-      walletStore,
-    }
-  },
-  mounted() {
-    if (this.walletStore.walletData != null) {
-      this.myAccount(useWalletStore().walletData);
-      this.marketAccount();
-    }
-  },
+  };
+
+  return {
+    connectWallet,
+    walletStore,
+  };
+},
+
+mounted() {
+
+  if (this.walletStore.walletData != null) {
+    this.myAccount(this.walletStore.walletData);
+    this.marketAccount();
+  }
+},
   methods: {
     open(d) {
       if (d === 'sell') this.displaySell = true;
@@ -324,40 +366,37 @@ export default {
     titleCase(str) {
       return str.charAt(0).toUpperCase() + str.slice(1);
     },
-    async myAccount(wallet) {
+async myAccount(wallet) {
+  try {
+    console.log('Getting account balance for wallet:', wallet);
+    console.log(algodclient);
+    console.log(assetID);
+    // console.log(carbonToken);
+    // const accounts = await algodclient.accounts;
+    // console.log('Algorand accounts:', accounts);
+    // const assetId = carbonToken.assetId;
+    const carbonToken = await balanceOf(algodclient,wallet,assetID);
+    console.log(carbonToken)
+    const val = await balanceOf(algodclient, wallet, assetID);
+    console.log('CarbonToken balance:', val.balance);
+    this.myCCTbalance = val.balance;
 
-      try {
-        // const accounts = await web3.eth.getAccounts();
-        // const accounts = await algodclient.accounts;
-        // console.log(`your account ${accounts[0]}`)
-        // console.log(accounts)
-
-        // const tokenContract = new web3.eth.Contract(
-        //     CarbonCreditToken.abi,
-        //     process.env.VUE_APP_TOKEN_CONTRACT_ADDRESS
-        // );
-
-        // const val = await carbonToken.balanceOf(algodclient, wallet, assetID);
-
-        this.myCCTbalance = 0;
-
-        axios.post('/member/registrationdata', {
-          walletaddress: wallet
-            }
-        ).then(res => {
-          this.membertype = res.data.membertype;
-          this.projectid = res.data.projectid;
-          this.taxid = res.data.taxid;
-        }).catch(err => {
-          console.log(err.message)
-          // this.errorToast('Error', `Account not found`)
-          this.membertype = null;
-        })
-
-      } catch (e) {
-        this.errorToast('Error', 'Error retrieving balance')
-      }
-    },
+    axios.post('/member/registrationdata', { walletaddress: wallet })
+      .then(res => {
+        console.log('Registration data response:', res);
+        this.membertype = res.data.membertype;
+        this.projectid = res.data.projectid;
+        this.taxid = res.data.taxid;
+      })
+      .catch(err => {
+        console.log('Registration data error:', err);
+        this.membertype = null;
+      });
+  } catch (e) {
+    console.error('Error retrieving balance:', e);
+    this.errorToast('Error', 'Error retrieving balance');
+  }
+},
     async marketAccount() {
 
       try {
