@@ -173,12 +173,14 @@ import { balanceOf } from '../../../carbon_credit_token/carbonCreditToken';
 
 
 // sandbox
-const token = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-const server = "http://localhost";
-const port = 4001;
+const token = { 'X-API-Key': process.env.TESTNET_ALGOD_API_KEY }; // for local environment use const token = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+const server = process.env.TESTNET_ALGOD_SERVER; //for local environment use 'http://localhost', for TestNet use PureStake "https://testnet-algorand.api.purestake.io/ps2" or AlgoExplorer "https://api.testnet.algoexplorer.io",
+const port = process.env.TESTNET_ALGOD_PORT; // for local environment use 4001;
+
 let algodclient = new algosdk.Algodv2(token, server, port);
-const assetID = 166644084;
-const vendor_address = "NWR46NHXFRJBNTQCRCT2NTNYH57RUKSPYLVWZYN6BVLLLGTZTEPS5S6PHE"
+const assetID = process.env.assetID;
+const vendor_address = process.env.VENDOR_ADDRESS
+
 
 export default {
   props: {
@@ -396,19 +398,12 @@ async myAccount(wallet) {
     async marketAccount() {
 
       try {
-        // const accounts = await web3.eth.getAccounts();
-        // console.log(`your account ${accounts[0]}`)
-        // const tokenContract = new web3.eth.Contract(
-        //     CarbonCreditToken.abi,
-        //     process.env.ACCOUNT1_ADDRESS
-        // );
+  
         const val = await balanceOf(algodclient, vendor_address, assetID);
         console.log('CarbonToken balance:', val.balance);
 
         this.marketCCTbalance = val.balance;
-        // const val = await tokenContract.methods
-        //     .balanceOf(process.env.VUE_APP_VENDOR_CONTRACT_ADDRESS)
-        //     .call();
+   
         this.marketCCTbalance = val.balance
 
       } catch (e) {

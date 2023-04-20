@@ -4,13 +4,13 @@ const algosdk = require('algosdk');
 // algod.net and algod.token files within the data directory
 
 // sandbox
-// const token = process.env.DEV_ALGOD_API_KEY;
-// const server = process.env.DEV_ALGOD_SERVER;
-// const port = process.env.DEV_ALGOD_PORT;
-// sandbox
-const token = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-const server = "http://localhost";
-const port = 4001;
+const token = { 'X-API-Key': process.env.TESTNET_ALGOD_API_KEY }; // for local environment use const token = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+const server = process.env.TESTNET_ALGOD_SERVER; //for local environment use 'http://localhost', for TestNet use PureStake "https://testnet-algorand.api.purestake.io/ps2" or AlgoExplorer "https://api.testnet.algoexplorer.io",
+const port = process.env.TESTNET_ALGOD_PORT; // for local environment use 4001;
+// // sandbox
+// const token = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+// const server = "http://localhost";
+// const port = 4001;
 
 let algodclient = new algosdk.Algodv2(token, server, port);
 
