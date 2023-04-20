@@ -351,7 +351,7 @@ await optInAsset('buyer');
   });
 }
 
-// buyCredits()
+buyCredits()
 
 
 // ask user for action to take

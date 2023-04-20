@@ -165,23 +165,20 @@ const algosdk = require('algosdk');
 import CarbonCreditToken from "@/artifacts/CarbonCreditToken.json"
 import Vendor from "@/artifacts/Vendor.json"
 import axios from "axios";
-// import { peraWallet  } from '@perawallet/connect';
-//import PeraWalletConnect from "@perawallet/connect";
-// import PeraWalletConnect from '@perawallet/connect';
 import { PeraWalletConnect } from "@perawallet/connect";
 
 // const peraWallet = new PeraWalletConnect({ chainId: 416002 });
 import { balanceOf } from '../../../carbon_credit_token/carbonCreditToken';
+
+
 
 // sandbox
 const token = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const server = "http://localhost";
 const port = 4001;
 let algodclient = new algosdk.Algodv2(token, server, port);
-
-console.log(algodclient)
 const assetID = 166644084;
-// console.log("correct?",carbonToken.balanceOf(algodclient,"CK6IKHX2YTKF372EM653WSR4OOWN3BZLVBETXQEZV6TNE3HC5QF3MZ7RZA", 166644084))
+const vendor_address = "NWR46NHXFRJBNTQCRCT2NTNYH57RUKSPYLVWZYN6BVLLLGTZTEPS5S6PHE"
 
 export default {
   props: {
@@ -341,6 +338,7 @@ mounted() {
         const vendor = new web3.eth.Contract(
             Vendor.abi,
             process.env.VUE_APP_VENDOR_CONTRACT_ADDRESS
+          
         );
         request = await vendor.methods
             .sellTokens(web3.utils.toWei(this.amount, "ether"))
@@ -371,14 +369,12 @@ async myAccount(wallet) {
     console.log('Getting account balance for wallet:', wallet);
     console.log(algodclient);
     console.log(assetID);
-    // console.log(carbonToken);
-    // const accounts = await algodclient.accounts;
-    // console.log('Algorand accounts:', accounts);
-    // const assetId = carbonToken.assetId;
-    const carbonToken = await balanceOf(algodclient,wallet,assetID);
-    console.log(carbonToken)
+   
+    // await balanceOf(algodclient,wallet,assetID);
+   
     const val = await balanceOf(algodclient, wallet, assetID);
     console.log('CarbonToken balance:', val.balance);
+
     this.myCCTbalance = val.balance;
 
     axios.post('/member/registrationdata', { walletaddress: wallet })
@@ -402,16 +398,18 @@ async myAccount(wallet) {
       try {
         // const accounts = await web3.eth.getAccounts();
         // console.log(`your account ${accounts[0]}`)
-        const tokenContract = new web3.eth.Contract(
-            CarbonCreditToken.abi,
-            process.env.VUE_APP_TOKEN_CONTRACT_ADDRESS
-        );
+        // const tokenContract = new web3.eth.Contract(
+        //     CarbonCreditToken.abi,
+        //     process.env.ACCOUNT1_ADDRESS
+        // );
+        const val = await balanceOf(algodclient, vendor_address, assetID);
+        console.log('CarbonToken balance:', val.balance);
 
-        const val = await tokenContract.methods
-            .balanceOf(process.env.VUE_APP_VENDOR_CONTRACT_ADDRESS)
-            .call();
-
-        this.marketCCTbalance = val / 10 ** 18
+        this.marketCCTbalance = val.balance;
+        // const val = await tokenContract.methods
+        //     .balanceOf(process.env.VUE_APP_VENDOR_CONTRACT_ADDRESS)
+        //     .call();
+        this.marketCCTbalance = val.balance
 
       } catch (e) {
         this.errorToast('Error', 'Error retrieving balance')
