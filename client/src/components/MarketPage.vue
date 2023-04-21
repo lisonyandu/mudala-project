@@ -158,29 +158,23 @@
 
 <script>
 import {useWalletStore} from '@/stores/wallet'
-import Web3 from "web3";
-
-let web3 = new Web3(window.ethereum);
 const algosdk = require('algosdk');
-import CarbonCreditToken from "@/artifacts/CarbonCreditToken.json"
-import Vendor from "@/artifacts/Vendor.json"
 import axios from "axios";
 import { PeraWalletConnect } from "@perawallet/connect";
 
-// const peraWallet = new PeraWalletConnect({ chainId: 416002 });
 import { balanceOf } from '../../../carbon_credit_token/carbonCreditToken';
-
-
-
+import { buyCredits } from '../../../carbon_credit_token/creditsExchange';
+import { sellCredits} from '../../../carbon_credit_token/creditsExchange';
+import { optInAsset } from '../../../carbon_credit_token/creditsExchange';
 // sandbox
-const token = { 'X-API-Key': process.env.TESTNET_ALGOD_API_KEY }; // for local environment use const token = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
-const server = process.env.TESTNET_ALGOD_SERVER; //for local environment use 'http://localhost', for TestNet use PureStake "https://testnet-algorand.api.purestake.io/ps2" or AlgoExplorer "https://api.testnet.algoexplorer.io",
-const port = process.env.TESTNET_ALGOD_PORT; // for local environment use 4001;
-
+const token = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+const server = "http://localhost";
+const port = 4001;
 let algodclient = new algosdk.Algodv2(token, server, port);
-const assetID = process.env.assetID;
-const vendor_address = process.env.VENDOR_ADDRESS
 
+console.log(algodclient)
+const assetID = 166644084;
+const vendor_address = "NWR46NHXFRJBNTQCRCT2NTNYH57RUKSPYLVWZYN6BVLLLGTZTEPS5S6PHE"
 
 export default {
   props: {
@@ -293,66 +287,38 @@ mounted() {
     getConnectionLabel() {
       return this.walletStore.walletData != null ? `${this.walletStore.walletData}` : 'Connect Wallet'
     },
-    async buy() {
-      this.close();
-      try {
-        const accounts = await web3.eth.getAccounts();
-        const vendor = new web3.eth.Contract(
-            Vendor.abi,
-            process.env.VUE_APP_VENDOR_CONTRACT_ADDRESS
-        );
-        const request = await vendor.methods.buyTokens().send({
-          from: accounts[0],
-          value: web3.utils.toWei((this.amount / 100).toString(), "ether"),
-        });
+async buy() {
+  this.close();
+  try {
 
-        this.successToast('Success', `You have purchased ${this.amount} CCT tokens`)
-        await this.myAccount(useWalletStore().walletData);
-        await this.marketAccount();
-        // alert("You have successfully purchased CCT tokens!");
-        console.log(request);
-      } catch (err) {
-        console.error(err);
-        // alert("Error purchasing tokens");
-        this.errorToast('Error', 'Error purchasing tokens')
-      }
-    },
+    await optInAsset('buyer');
+    console.log("buyer address", this.walletStore.walletData)
+    console.log("buyer amount", this.amount)
+    const requests = await buyCredits(algodclient, this.walletStore.walletData, this.amount);
+
+    this.successToast('Success', `You have purchased ${this.amount} CCT tokens`);
+    await this.myAccount(useWalletStore().walletData);
+    await this.marketAccount();
+    console.log(requests);
+  } catch (err) {
+    console.error(err);
+    this.errorToast('Error', 'Error purchasing tokens');
+  }
+},
     async sell() {
       this.close();
       try {
-        const accounts = await web3.eth.getAccounts();
-        console.log(`your account ${accounts[0]}`)
-        const tokenContract = new web3.eth.Contract(
-            CarbonCreditToken.abi,
-            process.env.VUE_APP_TOKEN_CONTRACT_ADDRESS
-        );
-        // Approve the contract to spend the tokens
-        let request = await tokenContract.methods
-            .approve(
-                process.env.VUE_APP_VENDOR_CONTRACT_ADDRESS,
-                web3.utils.toWei(this.amount, "ether")
-            )
-            .send({
-              from: accounts[0],
-            });
-
         // Trigger the selling of tokens
-        const vendor = new web3.eth.Contract(
-            Vendor.abi,
-            process.env.VUE_APP_VENDOR_CONTRACT_ADDRESS
-          
-        );
-        request = await vendor.methods
-            .sellTokens(web3.utils.toWei(this.amount, "ether"))
-            .send({
-              from: accounts[0],
-            });
-
+        await optInAsset('vendor');
+        console.log("seller address", this.walletStore.walletData)
+        console.log("sell amount", this.amount)
+        const requests = await sellCredits(algodclient, this.walletStore.walletData, this.amount);
+ 
         // alert("You have successfully sold CCT tokens!");
         this.successToast('Success', `You have sold ${this.amount} CCT tokens!`)
         await this.myAccount(useWalletStore().walletData);
         await this.marketAccount();
-        console.log(request);
+        console.log(requests);
       } catch (err) {
         console.error(err);
         // alert("Error selling tokens");
@@ -371,8 +337,6 @@ async myAccount(wallet) {
     console.log('Getting account balance for wallet:', wallet);
     console.log(algodclient);
     console.log(assetID);
-   
-    // await balanceOf(algodclient,wallet,assetID);
    
     const val = await balanceOf(algodclient, wallet, assetID);
     console.log('CarbonToken balance:', val.balance);
@@ -403,8 +367,6 @@ async myAccount(wallet) {
         console.log('CarbonToken balance:', val.balance);
 
         this.marketCCTbalance = val.balance;
-   
-        this.marketCCTbalance = val.balance
 
       } catch (e) {
         this.errorToast('Error', 'Error retrieving balance')
