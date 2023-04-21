@@ -53,26 +53,26 @@ app.get("/", (req, res) => {
 app.use("/member", memberRouter);
 app.use("/validator", validatorRouter);
 
-const reg_addr = process.env.ACCOUNT1_ADDRESS
+const regulator_address = process.env.ACCOUNT1_ADDRESS
 
 app.get("/api/validator", async (req, res) => {
-  // const assetID = await carbonToken.createCarbonCreditToken(reg_addr);
+  // const assetID = await carbonToken.createCarbonCreditToken(regulator_address);
   // console.log(assetID);
-  const balance = await carbonToken.balanceOf(algodclient, reg_addr, assetID);
+  const balance = await carbonToken.balanceOf(algodclient, regulator_address, assetID);
   console.log(balance);
-  const total = await carbonToken.totalSupply(algodclient, reg_addr, assetID);
+  const total = await carbonToken.totalSupply(algodclient, regulator_address, assetID);
   console.log(total);
   res.send({
     totalsupply: total.total_supply,
     balance: balance.balance,
-    wallet: reg_addr,
+    wallet: regulator_address,
   });
 });
 
 app.get("/api/totalsupply", async (req, res) => {
     try {
         // const val = await CarbonCreditToken.methods.totalSupply().call();
-        const val = await carbonToken.totalSupply(algodclient, reg_addr, assetID.assetID);
+        const val = await carbonToken.totalSupply(algodclient, regulator_address, assetID.assetID);
         res.send({balance: val});
     } catch (e) {
         console.log(e.message)
@@ -118,17 +118,23 @@ app.post("/api/myaccount", async (req, res) => {
 app.post("/api/transfer", async (req, res) => {
     try {
         // console.log(req.body.address);
-        const gasPrice = await web3.eth.getGasPrice();
-        const tokenTransferResult = await CarbonCreditToken.methods
-            .transfer(
-                req.body.walletaddress,
-                web3.utils.toWei(req.body.amount.toString(), "ETHER")
-            )
-            .send({
-                from: accounts[0],
-                gasPrice,
-            });
+        // const gasPrice = await web3.eth.getGasPrice();
+        // const tokenTransferResult = await CarbonCreditToken.methods
+        //     .transfer(
+        //         req.body.walletaddress,
+        //         web3.utils.toWei(req.body.amount.toString(), "ETHER")
+        //     )
+        //     .send({
+        //         from: accounts[0],
+        //         gasPrice,
+        //     });
         // console.log(req.body.memberid);
+        // const vendor_address = process.env.
+        await carbonToken.optInAsset('seller');
+
+        console.log("seller address", req.body.walletaddress)
+        console.log("credit amount", req.body.amount)
+        await carbonToken.transferCredits(algodclient, req.body.walletaddress, req.body.amount);
 
         await models.CreditRequests.update(
             {
@@ -170,8 +176,8 @@ sequelise
         console.log(accounts);
         // networkId = await web3.eth.net.getId();
         // contractAddress = artifact.networks[networkId].address;
-        // const reg_addr = process.env.ACCOUNT1_ADDRESS
-        // const assetID = await carbonToken.createCarbonCreditToken(reg_addr);
+        // const regulator_address = process.env.ACCOUNT1_ADDRESS
+        // const assetID = await carbonToken.createCarbonCreditToken(regulator_address);
         // CarbonCreditToken = new web3.eth.Contract(artifact.abi, contractAddress, {
         //     from: accounts[0],
         // });

@@ -11,7 +11,7 @@ const port = process.env.TESTNET_ALGOD_PORT; // for local environment use 4001;
 // const token = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 // const server = "http://localhost";
 // const port = 4001;
-
+const assetID = 166644084;
 let algodclient = new algosdk.Algodv2(token, server, port);
 
 var account1_mnemonic = "mesh enemy swarm oyster same foil kangaroo across biology inflict remain electric angry destroy office solid parade labor place vital link coil flavor abstract convince";
@@ -96,7 +96,68 @@ async function createCarbonCreditToken(regulator_pk) {
     assetID
   }
 }
-// createCarbonCreditToken(regulator_pk)
+// request tokens
+
+async function transferCredits(algodclient, seller_address, amount) {
+
+    // opt-in to asset
+  await optInAsset('seller');
+  console.log('Opted in');
+
+  const sender = regulator_address;
+  const recipient = seller_address;
+  const note = undefined;
+  const revocationTarget = undefined;
+  const closeRemainderTo = undefined;
+  // const fee = 10;
+
+  // check if regulator has enough credits to transfer
+  // const regulatorBalance = await getTokenBalance(algodclient, sender, assetID);
+  const val = await balanceOf(algodclient, regulator_address, assetID);
+
+  console.log('Regulator balance:', val.balance);
+  if (amount > val.balance) {
+    console.log(`Regulator has insufficient credits to transfer.`);
+    return;
+  }
+
+  // get transaction parameters
+  const params = await algodclient.getTransactionParams().do();
+  // const amount = 100; // transfer 100 credits
+  console.log(`Transferring ${amount} credits to ${recipient}...`);
+
+  // create asset transfer transaction with specified amount
+  const xtxn = algosdk.makeAssetTransferTxnWithSuggestedParams(
+    sender, 
+    recipient, 
+    closeRemainderTo, 
+    revocationTarget,
+    BigInt(amount),  
+    note, 
+    assetID, 
+    params
+  );
+
+  // Must be signed by the account sending the asset  
+  console.log('Signing transaction with regulator private key...');
+  const rawSignedTxn = xtxn.signTxn(regulator_pk.sk);
+  console.log('Sending transaction to the network...');
+  const xtx = await algodclient.sendRawTransaction(rawSignedTxn).do();
+  console.log(`Token transfer transaction ID: ${xtx.txId}`);
+
+  // Wait for confirmation
+  const confirmedTxn = await algosdk.waitForConfirmation(algodclient, xtx.txId, 4);
+
+  //Get the completed Transaction
+  console.log("Transaction " + xtx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
+  console.log(`Regulator has successfully transferred ${amount} credits to ${recipient}`);
+}
+
+// requestTokens();
+
+// // set up marketplace balance
+// let marketBalance = 0;
+// const tokensPerAlgo = 100;
 
 // Function used to print created asset  total supply for account and assetid
 const totalSupply = async function (algodclient, account, assetid) {
@@ -114,6 +175,51 @@ const totalSupply = async function (algodclient, account, assetid) {
     total_supply
   };
 };
+
+// OPT IN RECEIVE ASSET BY USER TYPE
+async function optInAsset(userType) {
+  let sender;
+  let recipient;
+  let note;
+  
+  if (userType === 'buyer') {
+    sender = buyer_address;
+    recipient = sender;
+  } else if (userType === 'seller') {
+    sender = seller_address;
+    recipient = sender;
+  } else if (userType === 'vendor') {
+    sender = vendor_address;
+    recipient = sender;
+  } else {
+    console.log('Invalid user type. Please enter "buyer" or "seller" or "vendor".');
+    return;
+  }
+
+  const revocationTarget = undefined;
+  const closeRemainderTo = undefined;
+  const amount = 0;
+  const params = await algodclient.getTransactionParams().do();
+  const opttxn = algosdk.makeAssetTransferTxnWithSuggestedParams(
+    sender, 
+    recipient, 
+    closeRemainderTo, 
+    revocationTarget,
+    amount, 
+    note, 
+    assetID, 
+    params
+  );
+
+  const privateKey = userType === 'seller' ? seller_pk.sk : userType === 'buyer' ? buyer_pk.sk : vendor_pk.sk;
+  const rawSignedTxn = opttxn.signTxn(privateKey);
+  const opttx = await algodclient.sendRawTransaction(rawSignedTxn).do();
+  const confirmedTxn = await algosdk.waitForConfirmation(algodclient, opttx.txId, 4);
+
+  console.log("Transaction " + opttx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
+
+  console.log(`Address: ${sender} has successfully opted in to receive asset with ID: ${assetID}`);
+}
 
 // Function used to print created asset balance for account and assetid
 const balanceOf = async function (algodclient, account, assetid) {
@@ -137,6 +243,8 @@ totalSupply(algodclient, buyer_address, 166644084)
 module.exports = {
   createCarbonCreditToken,
   balanceOf,
-  totalSupply
+  totalSupply,
+  transferCredits,
+  optInAsset
 };
 
