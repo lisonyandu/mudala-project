@@ -10,10 +10,6 @@ Mudala is a carbon offsetting exchange solution powered by Algorand blockchain t
 
 ## Installation
 
-- `$ `
-- ` npm install algosdk`
-- `$ ./sandbox goal wallet list`
-
 Install project dependencies
 
 - npm install
