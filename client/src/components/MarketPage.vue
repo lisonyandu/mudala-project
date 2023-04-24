@@ -166,15 +166,20 @@ import { balanceOf } from '../../../carbon_credit_token/carbonCreditToken';
 import { buyCredits } from '../../../carbon_credit_token/creditsExchange';
 import { sellCredits} from '../../../carbon_credit_token/creditsExchange';
 import { optInAsset } from '../../../carbon_credit_token/creditsExchange';
+// import { Transaction } from "algosdk";
+
 // sandbox
 const token = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const server = "http://localhost";
 const port = 4001;
 let algodclient = new algosdk.Algodv2(token, server, port);
-
+// import {useWallet} from '@txnlab/use-wallet'
+// import { useWallet } from 'use-wallet'
+// import BigInt from 'big-integer'
 console.log(algodclient)
 const assetID = 166644084;
 const vendor_address = "NWR46NHXFRJBNTQCRCT2NTNYH57RUKSPYLVWZYN6BVLLLGTZTEPS5S6PHE"
+// import {SignerTransaction} from "@perawallet/connect/dist/util/model/peraWalletModels";
 
 export default {
   props: {
@@ -304,27 +309,62 @@ async buy() {
     console.error(err);
     this.errorToast('Error', 'Error purchasing tokens');
   }
+// },async signTransaction(xtxn) {
+//     const wallet_address = this.walletStore.walletData
+//     console.log(wallet_address);
+//     xtxn = await sellCredits(algodclient, wallet_address, this.amount);
+//     console.log(xtxn);
+//     const signedTxn = xtxn.signTxn(wallet_address.sk);
+//     console.log(signedTxn);
+//     return signedTxn;
 },
-    async sell() {
-      this.close();
-      try {
-        // Trigger the selling of tokens
-        await optInAsset('vendor');
-        console.log("seller address", this.walletStore.walletData)
-        console.log("sell amount", this.amount)
-        const requests = await sellCredits(algodclient, this.walletStore.walletData, this.amount);
- 
-        // alert("You have successfully sold CCT tokens!");
-        this.successToast('Success', `You have sold ${this.amount} CCT tokens!`)
-        await this.myAccount(useWalletStore().walletData);
-        await this.marketAccount();
-        console.log(requests);
-      } catch (err) {
-        console.error(err);
-        // alert("Error selling tokens");
-        this.errorToast('Error', 'Error selling tokens')
-      }
-    },
+async sell() {
+  this.close();
+  try {
+    const peraWallet = new PeraWalletConnect({ chainId: 416002 });
+    // Trigger the selling of tokens
+    // await optInAsset('vendor');
+    // console.log("Opted In")
+    console.log("seller address", this.walletStore.walletData)
+    console.log("sell amount", this.amount)
+    const xtxn = await sellCredits(algodclient, this.walletStore.walletData, this.amount);
+    console.log(xtxn);
+    console.log("Sign??")
+    console.log("Amount", this.amount)
+    // const signedTransactions = await peraWallet.signTransaction([xtxn]);
+    console.log("Correct??",xtxn)
+    console.log("Correct??",this.walletStore.walletData)
+    // const singleTxnGroups = [{tnx:xtxn, signers: [this.walletStore.walletData]}];
+    // const singleTxnGroups = {tnx: xtxn, signers: this.walletStore.walletData};
+    const singleTxnGroups = {
+    tnx: xtxn, // an array containing a single transaction object
+    // signers: this.walletStore.walletData // an array containing the signer address(es)
+    };
+    console.log(singleTxnGroups);
+    // const signer = 
+    // peraWallet.connect;
+    // const signedTxn = await peraWallet.signTransaction([singleTxnGroups]);
+    console.log("Platform??",peraWallet.platform)
+    console.log("Connected?? True or False",peraWallet.isConnected)
+    const signedTxn = await peraWallet.signTransaction([xtxn]);
+    console.log(signedTxn);
+      // send transaction and log transaction ID
+   const xtx = await algodclient.sendRawTransaction(signedTxn).do();
+   console.log(`Transaction ID: ${xtx.txId}`);
+  // Wait for confirmation
+    const confirmedTxn = await algosdk.waitForConfirmation(algodclient, xtx.txId, 4);
+
+    // Get the completed Transaction
+    console.log("Transaction " + xtx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
+
+    this.successToast('Success', `You have sold ${this.amount} CCT tokens!`)
+    await this.myAccount(useWalletStore().walletData);
+    await this.marketAccount();
+  } catch (err) {
+    console.error(err);
+    this.errorToast('Error', 'Error selling tokens')
+  }
+},
     reset() {
       useWalletStore().$reset();
       console.log('Reset connection to wallet')

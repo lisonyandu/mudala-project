@@ -26,6 +26,7 @@
     "homepage": "https://github.com/Henri-99/Project-Carbon#readme",
     "dependencies": {
         "@openzeppelin/contracts": "^4.7.3",
+        "@perawallet/connect": "^1.2.3",
         "algosdk": "^2.2.0",
         "cors": "^2.8.5",
         "dotenv": "^16.0.3",

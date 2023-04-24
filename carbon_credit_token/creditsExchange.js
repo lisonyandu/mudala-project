@@ -329,17 +329,17 @@ async function sellCredits(algodclient, seller_address, amount) {
 
   console.log("No")
   // sign transaction with seller private key
-  const rawSignedTxn = xtxn.signTxn(seller_pk.sk);
-
+  // const rawSignedTxn = xtxn.signTxn(seller_pk.sk);
+  return [{txn:xtxn, signers: [seller_address]}];
   // send transaction and log transaction ID
-  const xtx = await algodclient.sendRawTransaction(rawSignedTxn).do();
-  console.log(`Transaction ID: ${xtx.txId}`);
+  // const xtx = await algodclient.sendRawTransaction(rawSignedTxn).do();
+  // console.log(`Transaction ID: ${xtx.txId}`);
 
   // Wait for confirmation
-  const confirmedTxn = await algosdk.waitForConfirmation(algodclient, xtx.txId, 4);
+  // const confirmedTxn = await algosdk.waitForConfirmation(algodclient, xtx.txId, 4);
 
-  // Get the completed Transaction
-  console.log("Transaction " + xtx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
+  // // Get the completed Transaction
+  // console.log("Transaction " + xtx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
 
   // update marketplace balance
   // marketBalance += amount;
