@@ -200,64 +200,54 @@ export default {
 
   setup() {
   const walletStore = useWalletStore();
-
+  const peraWallet = new PeraWalletConnect({ chainId: 416002 });
+  
   const connectWallet = async () => {
-    try {
-      // Initialize the PeraWallet object with the correct chain ID
-      const peraWallet = new PeraWalletConnect({ chainId: 416002 });
-
-      // Check if the user is already logged in
-      const accounts = await peraWallet.accounts;
-
-      if (accounts !== undefined && accounts.length > 0) {
-        const userAddress = accounts[0];
-        walletStore.saveWalletData(userAddress);
-        console.log("DApp connected to your wallet 💰");
-      } else {
-        // If the user is not logged in, prompt them to connect their wallet
-        await peraWallet.connect();
-        // Get the user's account after connection
-        const accounts = await peraWallet.accounts;
-
-        if (accounts !== undefined && accounts.length > 0) {
-          const userAddress = accounts[0];
-          walletStore.saveWalletData(userAddress);
-          console.log("DApp connected to your wallet 💰");
-        } else {
-          console.log("No account found");
-        }
-      }
-
-      // Reconnect the wallet session to check for any changes
-      peraWallet.connector.on("disconnect", () => {
-        console.log("Wallet disconnected");
-        // Handle wallet disconnection
-      });
-      peraWallet.reconnectSession().then((accounts) => {
-        if (accounts !== undefined && accounts.length > 0) {
-          const userAddress = accounts[0];
-          walletStore.saveWalletData(userAddress);
-          console.log("Wallet session reconnected 💰");
-        }
-      });
-
-    } catch (error) {
-      console.error("Error connecting DApp to your wallet:", error);
+  
+    if(!peraWallet.isConnected)
+    {  
+      peraWallet
+        .connect()
+        .then((accounts) => {
+          // peraWallet.connector.on("disconnect", this.disconnectWallet);
+          const accountAddress = accounts[0];
+          walletStore.saveWalletData(accountAddress);
+          console.log("The connected account: ",accountAddress);
+          // this.successToast('Success', `You have successfully connected your wallet!`)
+        })
+        .catch((e) => console.log(e));
     }
+    
   };
-
+  const disconnectWallet = async()=> {
+      peraWallet.disconnect().then(() => (this.accountAddress = null));
+    };
   return {
     connectWallet,
     walletStore,
+    disconnectWallet
   };
 },
-
 mounted() {
-
+  const peraWallet = new PeraWalletConnect({ chainId: 416002 });
   if (this.walletStore.walletData != null) {
     this.myAccount(this.walletStore.walletData);
     this.marketAccount();
   }
+  peraWallet
+      .reconnectSession()
+      // .then((accounts) => {
+      // peraWallet.connector.on("disconnect", this.disconnectWallet);
+
+      //   if (accounts.length) {
+      //     this.accountAddress = accounts[0];
+      //   }
+      // })
+      // .catch((error) => {
+      //   if (error?.data?.type !== "CONNECT_MODAL_CLOSED") {
+      //     console.log(error);
+      //   }
+      // });
 },
   methods: {
     open(d) {

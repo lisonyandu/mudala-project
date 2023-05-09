@@ -96,11 +96,10 @@ app.get("/api/balance", async (req, res) => {
 app.post("/api/myaccount", async (req, res) => {
     try {
         const member = await models.RegisteredMembers.findOne({
-            where: {pk: req.body.memberid},
+            where: {walletaddress: req.body.walletaddress},
             
         });
-        // const val = carbonToken.balanceOf(member.walletaddress)
-            // .balanceOf(member.walletaddress)
+    
             // console.log(member.walletaddress)
             const val = await carbonToken.balanceOf(algodclient, member.walletaddress, assetID);
             // console.log(val)

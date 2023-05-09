@@ -285,6 +285,8 @@ let txId;
 //     askForAction();
 //   });
 // }
+
+
 async function sellCredits(algodclient, seller_address, amount) {
   // opt-in to asset
   await optInAsset('vendor');

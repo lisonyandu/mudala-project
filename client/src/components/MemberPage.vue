@@ -39,22 +39,22 @@
     <div class="col-12">
       <div class="grid p-fluid ">
         <!--          <div class="col-12 md:col-3"></div>-->
-        <div class="col-12 md:col-3">
+        <!-- <div class="col-12 md:col-3">
           <div class="p-inputgroup">
                     <span class="p-inputgroup-addon">
                         <i class="pi pi-user"></i>
                     </span>
             <InputText placeholder="Member ID" v-model="memberid"/>
           </div>
-        </div>
+        </div> -->
 
         <div class="col-12 md:col-3">
           <Button
-              label="My Account"
+              label="Connect Wallet"
               icon="pi pi-wallet"
               class="ml-2"
               style="width: auto"
-              @click="myAccount(memberid)"
+              @click="authenticate()"
           ></Button>
         </div>
       </div>
@@ -161,6 +161,22 @@
 <script>
 import axios from "axios";
 
+// sandbox
+const token = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+const server = "http://localhost";
+const algosdk = require('algosdk');
+import {useWalletStore} from '@/stores/wallet'
+const port = 4001;
+let algodclient = new algosdk.Algodv2(token, server, port);
+import { PeraWalletConnect } from "@perawallet/connect";
+// import { setSendTransactionHeaders } from "algosdk/dist/types/client/v2/algod/sendRawTransaction";
+const vendor_address = "NWR46NHXFRJBNTQCRCT2NTNYH57RUKSPYLVWZYN6BVLLLGTZTEPS5S6PHE"
+// const public_key = "CK6IKHX2YTKF372EM653WSR4OOWN3BZLVBETXQEZV6TNE3HC5QF3MZ7RZA"
+const peraWallet = new PeraWalletConnect({ 
+  chainId: 416002,
+  shouldShowSignTxnToast: true
+ });
+// console.log(walletStore)
 export default {
   props: {
     title: String,
@@ -229,23 +245,106 @@ export default {
         this.errorToast('Error', err.response.data)
       })
     },
-    myAccount(memberid) {
-      axios.post('/api/myaccount', {
-            memberid: memberid
-          }
-      ).then(res => {
-        this.accountbalance = res.data.balance;
-        this.membertype = res.data.membertype;
-        this.projectid = res.data.projectid;
-        this.taxid = res.data.taxid;
-        this.dataloaded = true;
-      }).catch(err => {
-        console.log(err.message)
-        this.errorToast('Error', `Account not found`)
-      })
+    async connectWallet() {
+  const walletStore = useWalletStore();
+  if(peraWallet.isConnected) {
+    console.log("Connect your wallet")
+    try {
+      const accounts = await peraWallet.connect();
+      const accountAddress = accounts[0];
+      walletStore.saveWalletData(accountAddress);
+      console.log("DApp connected to your wallet 💰");
+      console.log("The connected account: ",accountAddress);
+      this.successToast('Success', `You have successfully connected your wallet! Now authenticating..`)
+      return accountAddress;
+    } catch (e) {
+      console.log(e);
+      throw new Error("Failed to connect wallet");
+    }
+  }
+},
+  async disconnectWallet() {
+      peraWallet.disconnect().then(() => (this.accountAddress = null));
+  },
+    //AUTHENTICATION
+    async authenticate() {
+  // Prompt the user to connect their wallet
+  // window.alert("Please connect your wallet to continue!");
+  // Wait for the wallet to connect before executing subsequent code
+  const accountAddress = await this.connectWallet();
+  console.log("Ready??",accountAddress);
 
-      this.myRequests(memberid);
-    },
+  // Update the wallet data in the store
+  const public_key = accountAddress;
+  console.log("Public address",public_key);
+
+  // Use the updated public key variable to make the transaction
+  const params = await algodclient.getTransactionParams().do();
+  const recipient = vendor_address;
+  const amount = 0;
+  const note = algosdk.encodeObj({ message: `Authenticating ${public_key}` });
+  const txn = algosdk.makePaymentTxnWithSuggestedParams(
+    public_key,
+    recipient,
+    amount,
+    undefined,
+    note,
+    params
+  );
+  const txnGroup = [{txn: txn, signers: [public_key]}];
+  console.log("do we get here??", txnGroup)
+
+  // Sign the transaction using the wallet
+  const signedTransactions = await peraWallet.signTransaction([txnGroup]);
+  console.log("Got here??")
+
+  // Send the signed transaction to the Algorand network
+  const xtx = await algodclient.sendRawTransaction(signedTransactions).do();
+  console.log(`Transaction ID: ${xtx.txId}`);
+
+  // Wait for confirmation of the transaction
+  const confirmedTxn = await algosdk.waitForConfirmation(algodclient, xtx.txId, 4);
+
+  // Get the completed transaction
+  console.log("Transaction " + xtx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
+
+  this.successToast('Success', `Your identity has been confirmed!`);
+
+  // Use the updated public key variable to make the API request
+  axios.post('/api/myaccount', {
+    walletaddress: public_key
+  }).then(res => {
+    this.accountbalance = res.data.balance;
+    this.membertype = res.data.membertype;
+    this.projectid = res.data.projectid;
+    this.taxid = res.data.taxid;
+    this.dataloaded = true;
+  }).catch(err => {
+    console.log(err.message)
+    this.errorToast('Error', `Account not found`)
+  });
+
+  // Use the updated public key variable to call the myRequests function
+  this.myRequests(public_key);
+},
+
+
+    // myAccount(memberid) {
+    //   axios.post('/api/myaccount', {
+    //         memberid: memberid
+    //       }
+    //   ).then(res => {
+    //     this.accountbalance = res.data.balance;
+    //     this.membertype = res.data.membertype;
+    //     this.projectid = res.data.projectid;
+    //     this.taxid = res.data.taxid;
+    //     this.dataloaded = true;
+    //   }).catch(err => {
+    //     console.log(err.message)
+    //     this.errorToast('Error', `Account not found`)
+    //   })
+    //   this.myRequests(memberid);
+    // },
     myRequests(memberid) {
       axios.post("/member/myrequests", {
             memberid: memberid
