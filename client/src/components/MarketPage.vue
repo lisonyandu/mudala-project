@@ -180,7 +180,7 @@ console.log(algodclient)
 const assetID = 166644084;
 const vendor_address = "NWR46NHXFRJBNTQCRCT2NTNYH57RUKSPYLVWZYN6BVLLLGTZTEPS5S6PHE"
 // import {SignerTransaction} from "@perawallet/connect/dist/util/model/peraWalletModels";
-
+const peraWallet = new PeraWalletConnect({ chainId: 416002 });
 export default {
   props: {
     title: String,
@@ -200,12 +200,12 @@ export default {
 
   setup() {
   const walletStore = useWalletStore();
-  const peraWallet = new PeraWalletConnect({ chainId: 416002 });
+  // const peraWallet = new PeraWalletConnect({ chainId: 416002 });
   
   const connectWallet = async () => {
   
-    if(!peraWallet.isConnected)
-    {  
+    // if(!peraWallet.isConnected)
+    // {  
       peraWallet
         .connect()
         .then((accounts) => {
@@ -218,7 +218,7 @@ export default {
         .catch((e) => console.log(e));
     }
     
-  };
+  // };
   const disconnectWallet = async()=> {
       peraWallet.disconnect().then(() => (this.accountAddress = null));
     };
@@ -229,7 +229,7 @@ export default {
   };
 },
 mounted() {
-  const peraWallet = new PeraWalletConnect({ chainId: 416002 });
+  // const peraWallet = new PeraWalletConnect({ chainId: 416002 });
   if (this.walletStore.walletData != null) {
     this.myAccount(this.walletStore.walletData);
     this.marketAccount();
@@ -311,7 +311,7 @@ async buy() {
 async sell() {
   this.close();
   try {
-    const peraWallet = new PeraWalletConnect({ chainId: 416002 });
+    // const peraWallet = new PeraWalletConnect({ chainId: 416002 });
     // Trigger the selling of tokens
     // await optInAsset('vendor');
     // console.log("Opted In")

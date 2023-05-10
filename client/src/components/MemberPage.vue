@@ -10,6 +10,38 @@
           <section>
 
             <div class="">
+              <span class="text-4xl font-bold mb-1">How to access your account</span>
+
+            </div>
+
+            <div class="flex flex-column mt-6">
+              <p><i class="pi pi-check-circle text-green-800 mr-2"></i> To access our platform, you'll need to connect your wallet first.</p>
+          <p><i class="pi pi-check-circle text-green-800 mr-2"></i> This process involves signing a transaction containing zero algos in order to authenticate your account.</p>
+          <p><i class="pi pi-check-circle text-green-800 mr-2"></i>  Once you've connected your wallet, you'll be able to log in and start using our services.</p>
+            </div>
+
+          </section>
+        </div>
+
+        <div
+            class="col-12 md:col-6 overflow-hidden flex align-items-center justify-content-center"
+        >
+          <img
+              :src="heroImage()"
+              alt="Image"
+              class="md:h-15rem md:w-fit"
+              style="width: 100%"
+          />
+        </div>
+
+      </div>
+      <div class="grid grid-nogutter text-800">
+        <div
+            class="col-12 md:col-6 text-center md:text-left flex align-items-center"
+        >
+          <section>
+
+            <div class="">
               <span class="text-4xl font-bold mb-1">Features</span>
 
             </div>
@@ -22,45 +54,43 @@
 
           </section>
         </div>
+
         <div
             class="col-12 md:col-6 overflow-hidden flex align-items-center justify-content-center"
         >
-          <img
-              :src="heroImage()"
-              alt="Image"
-              class="md:h-25rem md:w-fit"
-              style="width: 100%"
-          />
+   
         </div>
+
       </div>
-
     </div>
-
     <div class="col-12">
-      <div class="grid p-fluid ">
-        <!--          <div class="col-12 md:col-3"></div>-->
-        <!-- <div class="col-12 md:col-3">
-          <div class="p-inputgroup">
-                    <span class="p-inputgroup-addon">
-                        <i class="pi pi-user"></i>
-                    </span>
-            <InputText placeholder="Member ID" v-model="memberid"/>
-          </div>
-        </div> -->
 
-        <div class="col-12 md:col-3">
+      <div class="flex p-fluid">
+        <div class="">
+          <!--    :disabled="walletStore.walletData != null"      -->
           <Button
-              label="Connect Wallet"
-              icon="pi pi-wallet"
-              class="ml-2"
-              style="width: auto"
-              @click="authenticate()"
-          ></Button>
+              v-if="walletStore.walletData === null"
+
+              @click="connectWallet"
+              class="" :label="getConnectionLabel()" icon="pi pi-wallet" style="width: auto"/>
+          <p v-if="walletStore.walletData != null" class="text-xl text-green-800 mr-4"><i class="pi pi-wallet mr-3"></i>{{getConnectionLabel()}}</p>
+        </div>
+
+        <div style="min-width: 4rem" v-if="walletStore.walletData != null">
+          <Button label="Reset" class="p-button-danger ml-2" icon="pi pi-times" style="width: auto" @click="reset"/>
+
+          <!-- <template #footer> -->
+          <!-- <Button label="Login" @click="authenticate" icon="pi pi-check" class="p-button-outlined"/> -->
+        <!-- </template> -->
         </div>
       </div>
     </div>
+    <div class="col-12 mt-5 " v-if="walletStore.walletData">
+      <Button label="Login" id="login-button" icon="pi pi-wallet" @click="authenticate"/>
+    </div>
 
-    <div class="col-12 lg:col-6 xl:col-3" v-if="dataloaded">
+
+    <div class="col-12 lg:col-6 xl:col-3" id="account_type"  v-if="dataloaded">
       <div class="card mb-0">
         <div class="flex justify-content-between mb-3">
           <div>
@@ -77,7 +107,7 @@
       </div>
     </div>
 
-    <div class="col-12 lg:col-6 xl:col-3" v-if="dataloaded">
+    <div class="col-12 lg:col-6 xl:col-3" id="balance" v-if="dataloaded">
       <div class="card mb-0">
         <div class="flex justify-content-between mb-3">
           <div>
@@ -145,7 +175,7 @@
             <Column headerStyle="width:5rem">
               <template #body="slotProps">
                 <div class="grid" style="min-width: 5rem;">
-
+            
                   <Button class="p-button-danger p-button-icon-only ml-1" icon="pi pi-trash"
                           @click="deleteRequest(slotProps.data)"/>
                 </div>
@@ -184,6 +214,7 @@ export default {
   data() {
     return {
       display: false,
+      displaySell : false,
       memberid: null,
       membertype: null,
       projectid: null,
@@ -196,13 +227,60 @@ export default {
       requestsColumns: null,
     }
   },
+  setup() {
+  const walletStore = useWalletStore();
+  const peraWallet = new PeraWalletConnect({ chainId: 416002 });
+  
+  const connectWallet = async () => {
+  
+    // if(peraWallet.isConnected == false)
+    // {  
+      peraWallet
+        .connect()
+        .then((accounts) => {
+          // peraWallet.connector.on("disconnect", this.disconnectWallet);
+          const accountAddress = accounts[0];
+          walletStore.saveWalletData(accountAddress);
+          console.log("The connected account: ",accountAddress);
+
+          return accountAddress;
+          // this.successToast('Success', `You have successfully connected your wallet!`)
+        })
+        .catch((e) => console.log(e));
+    }
+    
+  // };
+  const disconnectWallet = async()=> {
+      peraWallet.disconnect().then(() => (this.accountAddress = null));
+    };
+  return {
+    connectWallet,
+    walletStore,
+    disconnectWallet
+  };
+},
+mounted() {
+  const peraWallet = new PeraWalletConnect({ chainId: 416002 });
+  if (this.walletStore.walletData != null) {
+    this.myAccount(this.walletStore.walletData);
+    // this.marketAccount();
+  }
+  peraWallet
+      .reconnectSession()
+      // .then((accounts) => {
+      // peraWallet.connector.on("disconnect", this.disconnectWallet);
+
+      //   if (accounts.length) {
+      //     this.accountAddress = accounts[0];
+      //   }
+      // })
+      // .catch((error) => {
+      //   if (error?.data?.type !== "CONNECT_MODAL_CLOSED") {
+      //     console.log(error);
+      //   }
+      // });
+},
   methods: {
-    open() {
-      this.display = true;
-    },
-    close() {
-      this.display = false;
-    },
     titleCase(str) {
       return str.charAt(0).toUpperCase() + str.slice(1);
     },
@@ -213,6 +291,12 @@ export default {
         detail: d,
         life: 4000,
       });
+    },
+    open() {
+      this.display = true;
+    },
+    close() {
+      this.display = false;
     },
     errorToast(s, d) {
       this.$toast.add({
@@ -226,6 +310,18 @@ export default {
       return this.$appState.darkTheme
           ? "images/img_1.png"
           : "images/img_1.png";
+    },
+    getConnectionLabel() {
+      return this.walletStore.walletData != null ? `You are connected: ${this.walletStore.walletData}` : 'Connect Wallet'
+    },
+    reset() {
+      useWalletStore().$reset();
+      var balance = document.getElementById("balance");
+      var account_type = document.getElementById("account_type");
+      // hide the login button by setting its display style property to "none"
+      balance.style.display = "none";
+      account_type.style.display = "none";
+      console.log('Reset connection to wallet')
     },
     sendRequest() {
       const n = new Date();
@@ -245,33 +341,35 @@ export default {
         this.errorToast('Error', err.response.data)
       })
     },
-    async connectWallet() {
-  const walletStore = useWalletStore();
-  if(peraWallet.isConnected) {
-    console.log("Connect your wallet")
-    try {
-      const accounts = await peraWallet.connect();
-      const accountAddress = accounts[0];
-      walletStore.saveWalletData(accountAddress);
-      console.log("DApp connected to your wallet 💰");
-      console.log("The connected account: ",accountAddress);
-      this.successToast('Success', `You have successfully connected your wallet! Now authenticating..`)
-      return accountAddress;
-    } catch (e) {
-      console.log(e);
-      throw new Error("Failed to connect wallet");
-    }
-  }
-},
-  async disconnectWallet() {
-      peraWallet.disconnect().then(() => (this.accountAddress = null));
-  },
+//   async connectWallet() {
+//   const walletStore = useWalletStore();
+//   if(peraWallet.isConnected) {
+//     console.log("Connect your wallet")
+//     try {
+//       const accounts = await peraWallet.connect();
+//       const accountAddress = accounts[0];
+//       walletStore.saveWalletData(accountAddress);
+//       console.log("DApp connected to your wallet 💰");
+//       console.log("The connected account: ",accountAddress);
+//       this.successToast('Success', `You have successfully connected your wallet! Now authenticating..`)
+//       return accountAddress;
+//     } catch (e) {
+//       console.log(e);
+//       throw new Error("Failed to connect wallet");
+//     }
+//   }
+// },
+//   async disconnectWallet() {
+//       peraWallet.disconnect().then(() => (this.accountAddress = null));
+//   },
     //AUTHENTICATION
-    async authenticate() {
+ async authenticate() {
+
   // Prompt the user to connect their wallet
   // window.alert("Please connect your wallet to continue!");
   // Wait for the wallet to connect before executing subsequent code
-  const accountAddress = await this.connectWallet();
+  // const accountAddress = await this.connectWallet();
+  const accountAddress = this.walletStore.walletData;
   console.log("Ready??",accountAddress);
 
   // Update the wallet data in the store
@@ -307,44 +405,51 @@ export default {
 
   // Get the completed transaction
   console.log("Transaction " + xtx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
+// check if user has been authenticated
+  // select the login button element by its id
+  var loginButton = document.getElementById("login-button");
+  // hide the login button by setting its display style property to "none"
+  loginButton.style.display = "none";
 
   this.successToast('Success', `Your identity has been confirmed!`);
 
+  this.myAccount(public_key)
+  
   // Use the updated public key variable to make the API request
-  axios.post('/api/myaccount', {
-    walletaddress: public_key
-  }).then(res => {
-    this.accountbalance = res.data.balance;
-    this.membertype = res.data.membertype;
-    this.projectid = res.data.projectid;
-    this.taxid = res.data.taxid;
-    this.dataloaded = true;
-  }).catch(err => {
-    console.log(err.message)
-    this.errorToast('Error', `Account not found`)
-  });
+  // axios.post('/api/myaccount', {
+  //   walletaddress: public_key
+  // }).then(res => {
+  //   this.accountbalance = res.data.balance;
+  //   this.membertype = res.data.membertype;
+  //   this.projectid = res.data.projectid;
+  //   this.taxid = res.data.taxid;
+  //   this.dataloaded = true;
+  // }).catch(err => {
+  //   console.log(err.message)
+  //   this.errorToast('Error', `Account not found`)
+  // });
 
-  // Use the updated public key variable to call the myRequests function
-  this.myRequests(public_key);
+  
+  // // Use the updated public key variable to call the myRequests function
+  // this.myRequests(public_key);
 },
+    myAccount(walletaddress) {
+      axios.post('/api/myaccount', {
+        walletaddress : this.walletStore.walletData,
+          }
+      ).then(res => {
+        this.accountbalance = res.data.balance;
+        this.membertype = res.data.membertype;
+        this.projectid = res.data.projectid;
+        this.taxid = res.data.taxid;
+        this.dataloaded = true;
+      }).catch(err => {
+        console.log(err.message)
+        this.errorToast('Error', `Account not found`)
+      })
+      this.myRequests(walletaddress);
+    },
 
-
-    // myAccount(memberid) {
-    //   axios.post('/api/myaccount', {
-    //         memberid: memberid
-    //       }
-    //   ).then(res => {
-    //     this.accountbalance = res.data.balance;
-    //     this.membertype = res.data.membertype;
-    //     this.projectid = res.data.projectid;
-    //     this.taxid = res.data.taxid;
-    //     this.dataloaded = true;
-    //   }).catch(err => {
-    //     console.log(err.message)
-    //     this.errorToast('Error', `Account not found`)
-    //   })
-    //   this.myRequests(memberid);
-    // },
     myRequests(memberid) {
       axios.post("/member/myrequests", {
             memberid: memberid
