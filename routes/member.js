@@ -94,7 +94,9 @@ router.post("/registrationdata", async (req, res) => {
         res.send({
             membertype: member.membertype,
             projectid: member.projectid,
-            taxid: member.taxid
+            taxid: member.taxid,
+            walletaddress: member.walletaddress,
+            memberid: member.pk
         });
     } catch (e) {
         console.log(e)

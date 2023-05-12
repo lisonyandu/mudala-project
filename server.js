@@ -107,7 +107,9 @@ app.post("/api/myaccount", async (req, res) => {
             balance: val['balance'],
             membertype: member.membertype,
             projectid: member.projectid,
-            taxid: member.taxid
+            taxid: member.taxid,
+            walletaddress: member.walletaddress,
+            memberid: member.pk
         });
     } catch (e) {
         res.status(400).send({error: e, message: "Unexpected error occurred 😤"});

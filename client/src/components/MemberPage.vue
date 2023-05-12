@@ -1,8 +1,7 @@
 <template>
   <Toast position="top-right"/>
   <div class="grid">
-    <div class="col-12" v-if="!dataloaded">
-
+    <div class="col-12" v-if="accountAddress == null">
       <div class="grid grid-nogutter text-800">
         <div
             class="col-12 md:col-6 text-center md:text-left flex align-items-center"
@@ -10,12 +9,12 @@
           <section>
 
             <div class="">
-              <span class="text-4xl font-bold mb-1">How to access your account</span>
+              <span class="text-4xl font-bold mb-1">To access your account </span>
 
             </div>
 
             <div class="flex flex-column mt-6">
-              <p><i class="pi pi-check-circle text-green-800 mr-2"></i> To access our platform, you'll need to connect your wallet first.</p>
+              <p><i class="pi pi-check-circle text-green-800 mr-2"></i> You'll need to connect your wallet first.</p>
           <p><i class="pi pi-check-circle text-green-800 mr-2"></i> This process involves signing a transaction containing zero algos in order to authenticate your account.</p>
           <p><i class="pi pi-check-circle text-green-800 mr-2"></i>  Once you've connected your wallet, you'll be able to log in and start using our services.</p>
             </div>
@@ -54,48 +53,55 @@
 
           </section>
         </div>
-
         <div
             class="col-12 md:col-6 overflow-hidden flex align-items-center justify-content-center"
         >
-   
-        </div>
 
+        </div>
       </div>
+
     </div>
+    <!-- <button @click="disconnectWallet" v-if="accountAddress">Disconnect</button> -->
+  <!-- <button @click="connectWallet" v-else>Connect to Pera Wallet</button> -->
+  <div v-if="accountAddress" class="text-xl text-green-800 mr-4"><i class="pi pi-wallet mr-3"> </i>{{getConnectionLabel()}}</div>
+  <div style="min-width: 4rem" v-if="accountAddress != null">
+          <Button label="Reset" class="p-button-danger ml-2" icon="pi pi-times" style="width: auto" @click="disconnectWallet"/>
+
+        </div>
+ 
     <div class="col-12">
+      <div class="grid p-fluid ">
+        <!--          <div class="col-12 md:col-3"></div>-->
+        <!-- <div class="col-12 md:col-3">
+          <div class="p-inputgroup">
+                    <span class="p-inputgroup-addon">
+                        <i class="pi pi-user"></i>
+                    </span>
+    
+          </div>
+        </div> -->
 
-      <div class="flex p-fluid">
-        <div class="">
-          <!--    :disabled="walletStore.walletData != null"      -->
+        <div v-if="accountAddress == null" class="col-12 md:col-3">
           <Button
-              v-if="walletStore.walletData === null"
-
+              label="My Account"
+              icon="pi pi-wallet"
+              class="ml-2"
+              style="width: auto"
               @click="connectWallet"
-              class="" :label="getConnectionLabel()" icon="pi pi-wallet" style="width: auto"/>
-          <p v-if="walletStore.walletData != null" class="text-xl text-green-800 mr-4"><i class="pi pi-wallet mr-3"></i>{{getConnectionLabel()}}</p>
-        </div>
-
-        <div style="min-width: 4rem" v-if="walletStore.walletData != null">
-          <Button label="Reset" class="p-button-danger ml-2" icon="pi pi-times" style="width: auto" @click="reset"/>
-
-          <!-- <template #footer> -->
-          <!-- <Button label="Login" @click="authenticate" icon="pi pi-check" class="p-button-outlined"/> -->
-        <!-- </template> -->
+          ></Button>
         </div>
       </div>
     </div>
-    <div class="col-12 mt-5 " v-if="walletStore.walletData">
-      <Button label="Login" id="login-button" icon="pi pi-wallet" @click="authenticate"/>
-    </div>
 
-
-    <div class="col-12 lg:col-6 xl:col-3" id="account_type"  v-if="dataloaded">
+    <div class="col-12 lg:col-6 xl:col-3" v-if= "dataloaded && accountAddress != null">
       <div class="card mb-0">
         <div class="flex justify-content-between mb-3">
           <div>
             <span class="block text-500 font-medium mb-3">Account Type</span>
+            
             <div class="text-900 font-medium text-xl">{{ titleCase(membertype) }}</div>
+  
+          
           </div>
           <div class="flex align-items-center justify-content-center bg-orange-100 border-round"
                style="width:2.5rem;height:2.5rem">
@@ -107,12 +113,13 @@
       </div>
     </div>
 
-    <div class="col-12 lg:col-6 xl:col-3" id="balance" v-if="dataloaded">
+    <div class="col-12 lg:col-6 xl:col-3" v-if="dataloaded && accountAddress != null">
       <div class="card mb-0">
         <div class="flex justify-content-between mb-3">
           <div>
             <span class="block text-500 font-medium mb-3">Balance</span>
             <div class="text-900 font-medium text-xl">{{ accountbalance }}</div>
+            
           </div>
           <div class="flex align-items-center justify-content-center bg-blue-100 border-round"
                style="width:2.5rem;height:2.5rem">
@@ -123,10 +130,9 @@
         <!--        <span class="text-500">Tokens</span>-->
       </div>
     </div>
-
     <div class="col-12 lg:col-6 xl:col-3" v-if="dataloaded"></div>
 
-    <div class="col-12 md:col-3 flex justify-content-end align-items-end" v-if="dataloaded">
+    <div class="col-12 md:col-3 flex justify-content-end align-items-end" v-if="dataloaded && accountAddress != null">
       <div v-if="membertype === 'seller'">
         <Dialog header="Request Form"
                 v-model:visible="display"
@@ -147,7 +153,7 @@
           </div>
 
           <template #footer>
-            <Button label="Request" @click="sendRequest" icon="pi pi-check" class="p-button-outlined"/>
+            <Button label="Request" @click="sendRequest(memberid)" icon="pi pi-check" class="p-button-outlined"/>
           </template>
         </Dialog>
         <Button label="Request Credits" icon="pi pi-external-link" style="width: auto" @click="open"/>
@@ -155,7 +161,7 @@
     </div>
 
 
-    <div class="col-12" v-if="dataloaded && membertype === 'seller' ">
+    <div class="col-12" v-if="dataloaded && membertype === 'seller' && accountAddress != null ">
       <div class="">
 
         <div class="mt-5">
@@ -175,7 +181,7 @@
             <Column headerStyle="width:5rem">
               <template #body="slotProps">
                 <div class="grid" style="min-width: 5rem;">
-            
+
                   <Button class="p-button-danger p-button-icon-only ml-1" icon="pi pi-trash"
                           @click="deleteRequest(slotProps.data)"/>
                 </div>
@@ -190,23 +196,21 @@
 
 <script>
 import axios from "axios";
+import { PeraWalletConnect } from "@perawallet/connect";
+import {useWalletStore} from '@/stores/wallet'
 
-// sandbox
+const algosdk = require('algosdk');
+const peraWallet = new PeraWalletConnect({ chainId: 416002 });
 const token = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const server = "http://localhost";
-const algosdk = require('algosdk');
-import {useWalletStore} from '@/stores/wallet'
+const walletStore = useWalletStore();
+
 const port = 4001;
 let algodclient = new algosdk.Algodv2(token, server, port);
-import { PeraWalletConnect } from "@perawallet/connect";
-// import { setSendTransactionHeaders } from "algosdk/dist/types/client/v2/algod/sendRawTransaction";
+
+
 const vendor_address = "NWR46NHXFRJBNTQCRCT2NTNYH57RUKSPYLVWZYN6BVLLLGTZTEPS5S6PHE"
-// const public_key = "CK6IKHX2YTKF372EM653WSR4OOWN3BZLVBETXQEZV6TNE3HC5QF3MZ7RZA"
-const peraWallet = new PeraWalletConnect({ 
-  chainId: 416002,
-  shouldShowSignTxnToast: true
- });
-// console.log(walletStore)
+
 export default {
   props: {
     title: String,
@@ -214,73 +218,63 @@ export default {
   data() {
     return {
       display: false,
-      displaySell : false,
       memberid: null,
       membertype: null,
       projectid: null,
       taxid: null,
-      address: null,
+      walletaddress: null,
       amount: null,
       accountbalance: null,
       dataloaded: false,
       requests: null,
       requestsColumns: null,
+      accountAddress :null
+
     }
   },
-  setup() {
-  const walletStore = useWalletStore();
-  const peraWallet = new PeraWalletConnect({ chainId: 416002 });
-  
-  const connectWallet = async () => {
-  
-    // if(peraWallet.isConnected == false)
-    // {  
+  mounted() {
+    // this.myRequests(this.memberid)
+    peraWallet
+      .reconnectSession()
+      .then((accounts) => {
+        peraWallet.connector.on("disconnect", this.disconnectWallet);
+
+        if (accounts.length) {
+          this.accountAddress = accounts[0];
+        }
+      })
+      .catch((error) => {
+        if (error?.data?.type !== "CONNECT_MODAL_CLOSED") {
+          console.log(error);
+        }
+      });
+  },
+  methods: {
+    connectWallet() {
       peraWallet
         .connect()
         .then((accounts) => {
-          // peraWallet.connector.on("disconnect", this.disconnectWallet);
-          const accountAddress = accounts[0];
-          walletStore.saveWalletData(accountAddress);
-          console.log("The connected account: ",accountAddress);
+          peraWallet.connector.on("disconnect", this.disconnectWallet);
 
-          return accountAddress;
-          // this.successToast('Success', `You have successfully connected your wallet!`)
+          this.accountAddress = accounts[0];
+          walletStore.saveWalletData(this.accountAddress);
+          this.authenticate(this.accountAddress)
+          // this.myRequests(this.memberid);
         })
         .catch((e) => console.log(e));
-    }
-    
-  // };
-  const disconnectWallet = async()=> {
+    },
+    disconnectWallet() {
       peraWallet.disconnect().then(() => (this.accountAddress = null));
-    };
-  return {
-    connectWallet,
-    walletStore,
-    disconnectWallet
-  };
-},
-mounted() {
-  const peraWallet = new PeraWalletConnect({ chainId: 416002 });
-  if (this.walletStore.walletData != null) {
-    this.myAccount(this.walletStore.walletData);
-    // this.marketAccount();
-  }
-  peraWallet
-      .reconnectSession()
-      // .then((accounts) => {
-      // peraWallet.connector.on("disconnect", this.disconnectWallet);
-
-      //   if (accounts.length) {
-      //     this.accountAddress = accounts[0];
-      //   }
-      // })
-      // .catch((error) => {
-      //   if (error?.data?.type !== "CONNECT_MODAL_CLOSED") {
-      //     console.log(error);
-      //   }
-      // });
-},
-  methods: {
+    },
+    getConnectionLabel() {
+      return this.accountAddress != null ? `Connected to: ${this.accountAddress}` : 'Connect Wallet'
+    },
+    open() {
+      this.display = true;
+    },
+    close() {
+      this.display = false;
+    },
     titleCase(str) {
       return str.charAt(0).toUpperCase() + str.slice(1);
     },
@@ -291,12 +285,6 @@ mounted() {
         detail: d,
         life: 4000,
       });
-    },
-    open() {
-      this.display = true;
-    },
-    close() {
-      this.display = false;
     },
     errorToast(s, d) {
       this.$toast.add({
@@ -311,29 +299,17 @@ mounted() {
           ? "images/img_1.png"
           : "images/img_1.png";
     },
-    getConnectionLabel() {
-      return this.walletStore.walletData != null ? `You are connected: ${this.walletStore.walletData}` : 'Connect Wallet'
-    },
-    reset() {
-      useWalletStore().$reset();
-      var balance = document.getElementById("balance");
-      var account_type = document.getElementById("account_type");
-      // hide the login button by setting its display style property to "none"
-      balance.style.display = "none";
-      account_type.style.display = "none";
-      console.log('Reset connection to wallet')
-    },
-    sendRequest() {
+    sendRequest(memberid) {
       const n = new Date();
       axios.post('/member/requestcredit', {
-            memberid: this.memberid,
+            memberid: memberid,
             date: `${n.getDate()}/${(n.getMonth() + 1)}/${n.getFullYear()}`
           }
       ).then(() => {
         // this.memberid = res.data.memberid;
         this.dataLoaded = true;
         this.successToast('Success', `Request successful`)
-        this.myAccount(this.memberid);
+        this.myAccount(this.walletaddress);
         this.close();
       }).catch(err => {
         console.log(err)
@@ -341,115 +317,73 @@ mounted() {
         this.errorToast('Error', err.response.data)
       })
     },
-//   async connectWallet() {
-//   const walletStore = useWalletStore();
-//   if(peraWallet.isConnected) {
-//     console.log("Connect your wallet")
-//     try {
-//       const accounts = await peraWallet.connect();
-//       const accountAddress = accounts[0];
-//       walletStore.saveWalletData(accountAddress);
-//       console.log("DApp connected to your wallet 💰");
-//       console.log("The connected account: ",accountAddress);
-//       this.successToast('Success', `You have successfully connected your wallet! Now authenticating..`)
-//       return accountAddress;
-//     } catch (e) {
-//       console.log(e);
-//       throw new Error("Failed to connect wallet");
-//     }
-//   }
-// },
-//   async disconnectWallet() {
-//       peraWallet.disconnect().then(() => (this.accountAddress = null));
-//   },
-    //AUTHENTICATION
- async authenticate() {
+    async authenticate() {
 
-  // Prompt the user to connect their wallet
-  // window.alert("Please connect your wallet to continue!");
-  // Wait for the wallet to connect before executing subsequent code
-  // const accountAddress = await this.connectWallet();
-  const accountAddress = this.walletStore.walletData;
-  console.log("Ready??",accountAddress);
+      const accountAddress = this.accountAddress;
+      console.log("Ready??",accountAddress);
 
-  // Update the wallet data in the store
-  const public_key = accountAddress;
-  console.log("Public address",public_key);
+      // Update the wallet data in the store
+      const public_key = accountAddress;
+      console.log("Public address",public_key);
 
-  // Use the updated public key variable to make the transaction
-  const params = await algodclient.getTransactionParams().do();
-  const recipient = vendor_address;
-  const amount = 0;
-  const note = algosdk.encodeObj({ message: `Authenticating ${public_key}` });
-  const txn = algosdk.makePaymentTxnWithSuggestedParams(
-    public_key,
-    recipient,
-    amount,
-    undefined,
-    note,
-    params
-  );
-  const txnGroup = [{txn: txn, signers: [public_key]}];
-  console.log("do we get here??", txnGroup)
+      // Use the updated public key variable to make the transaction
+      const params = await algodclient.getTransactionParams().do();
+      const recipient = vendor_address;
+      const amount = 0;
+      const note = algosdk.encodeObj({ message: `Authenticating ${public_key}` });
+      const txn = algosdk.makePaymentTxnWithSuggestedParams(
+        public_key,
+        recipient,
+        amount,
+        undefined,
+        note,
+        params
+      );
+      const txnGroup = [{txn: txn, signers: [public_key]}];
+      console.log("do we get here??", txnGroup)
 
-  // Sign the transaction using the wallet
-  const signedTransactions = await peraWallet.signTransaction([txnGroup]);
-  console.log("Got here??")
+      // Sign the transaction using the wallet
+      const signedTransactions = await peraWallet.signTransaction([txnGroup]);
+      console.log("Got here??")
 
-  // Send the signed transaction to the Algorand network
-  const xtx = await algodclient.sendRawTransaction(signedTransactions).do();
-  console.log(`Transaction ID: ${xtx.txId}`);
+      // Send the signed transaction to the Algorand network
+      const xtx = await algodclient.sendRawTransaction(signedTransactions).do();
+      console.log(`Transaction ID: ${xtx.txId}`);
 
-  // Wait for confirmation of the transaction
-  const confirmedTxn = await algosdk.waitForConfirmation(algodclient, xtx.txId, 4);
+      // Wait for confirmation of the transaction
+      const confirmedTxn = await algosdk.waitForConfirmation(algodclient, xtx.txId, 4);
 
-  // Get the completed transaction
-  console.log("Transaction " + xtx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
-// check if user has been authenticated
-  // select the login button element by its id
-  var loginButton = document.getElementById("login-button");
-  // hide the login button by setting its display style property to "none"
-  loginButton.style.display = "none";
+      // Get the completed transaction
+      console.log("Transaction " + xtx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
+      // check if user has been authenticated
+      // select the login button element by its id
+      // var loginButton = document.getElementById("login-button");
+      // // hide the login button by setting its display style property to "none"
+      // loginButton.style.display = "none";
 
-  this.successToast('Success', `Your identity has been confirmed!`);
+      this.successToast('Success', `Your identity has been confirmed!`);
 
-  this.myAccount(public_key)
-  
-  // Use the updated public key variable to make the API request
-  // axios.post('/api/myaccount', {
-  //   walletaddress: public_key
-  // }).then(res => {
-  //   this.accountbalance = res.data.balance;
-  //   this.membertype = res.data.membertype;
-  //   this.projectid = res.data.projectid;
-  //   this.taxid = res.data.taxid;
-  //   this.dataloaded = true;
-  // }).catch(err => {
-  //   console.log(err.message)
-  //   this.errorToast('Error', `Account not found`)
-  // });
-
-  
-  // // Use the updated public key variable to call the myRequests function
-  // this.myRequests(public_key);
-},
+      this.myAccount(public_key)
+    },
     myAccount(walletaddress) {
       axios.post('/api/myaccount', {
-        walletaddress : this.walletStore.walletData,
+          walletaddress: walletaddress
           }
       ).then(res => {
         this.accountbalance = res.data.balance;
         this.membertype = res.data.membertype;
         this.projectid = res.data.projectid;
         this.taxid = res.data.taxid;
+        this.memberid = res.data.memberid;
+        this.walletaddress = res.data.walletaddress;
         this.dataloaded = true;
+        this.myRequests(res.data.memberid);
       }).catch(err => {
         console.log(err.message)
         this.errorToast('Error', `Account not found`)
       })
-      this.myRequests(walletaddress);
+      // this.myRequests(this.memberid);
     },
-
     myRequests(memberid) {
       axios.post("/member/myrequests", {
             memberid: memberid
@@ -467,6 +401,10 @@ mounted() {
       }).catch(e => {
         console.log(e.message);
       });
+    },
+    reset() {
+      useWalletStore().$reset();
+      console.log('Reset connection to wallet')
     },
     deleteRequest(data) {
       axios.post('/member/delete',

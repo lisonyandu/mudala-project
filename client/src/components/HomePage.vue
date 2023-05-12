@@ -174,7 +174,7 @@ export default {
     register(){
       axios.post('/member/register', {
         companyname: this.companyname,
-        walletaddress: this.walletaddress.toUpperCase(),
+        walletaddress: this.walletaddress,
         membertype: this.membertype.code,
         projectid: this.projectid,
         taxid: this.taxid,

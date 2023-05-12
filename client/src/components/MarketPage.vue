@@ -180,7 +180,7 @@ console.log(algodclient)
 const assetID = 166644084;
 const vendor_address = "NWR46NHXFRJBNTQCRCT2NTNYH57RUKSPYLVWZYN6BVLLLGTZTEPS5S6PHE"
 // import {SignerTransaction} from "@perawallet/connect/dist/util/model/peraWalletModels";
-const peraWallet = new PeraWalletConnect({ chainId: 416002 });
+  const peraWallet = new PeraWalletConnect({ chainId: 416002 });
 export default {
   props: {
     title: String,

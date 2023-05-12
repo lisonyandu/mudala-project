@@ -16,7 +16,7 @@ module.exports = function (sequelize, DataTypes) {
             },
             walletaddress: {
                 type: DataTypes.STRING(255),
-                allowNull: true,
+                allowNull: false,
             },
             membertype: {
                 type: DataTypes.STRING(255),
