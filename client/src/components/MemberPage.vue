@@ -16,7 +16,7 @@
             <div class="flex flex-column mt-6">
               <p><i class="pi pi-check-circle text-green-800 mr-2"></i> You'll need to connect your wallet first.</p>
           <p><i class="pi pi-check-circle text-green-800 mr-2"></i> This process involves signing a transaction containing zero algos in order to authenticate your account.</p>
-          <p><i class="pi pi-check-circle text-green-800 mr-2"></i>  Once you've connected your wallet, you'll be able to log in and start using our services.</p>
+          <p><i class="pi pi-check-circle text-green-800 mr-2"></i>  Once your account is confirmed, you'll be able to log in and start using our services.</p>
             </div>
 
           </section>
@@ -28,7 +28,7 @@
           <img
               :src="heroImage()"
               alt="Image"
-              class="md:h-15rem md:w-fit"
+              class="md:h-25rem md:w-fit"
               style="width: 100%"
           />
         </div>

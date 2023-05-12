@@ -54,6 +54,7 @@ app.use("/member", memberRouter);
 app.use("/validator", validatorRouter);
 
 const regulator_address = process.env.ACCOUNT1_ADDRESS
+const assetID_2 = process.env.assetID_2
 
 app.get("/api/validator", async (req, res) => {
   // const assetID = await carbonToken.createCarbonCreditToken(regulator_address);
@@ -115,7 +116,6 @@ app.post("/api/myaccount", async (req, res) => {
         res.status(400).send({error: e, message: "Unexpected error occurred 😤"});
     }
 });
-
 app.post("/api/transfer", async (req, res) => {
     try {
         // console.log(req.body.address);
@@ -158,11 +158,19 @@ app.post("/api/transfer", async (req, res) => {
 
 app.post("/api/mint", async (req, res) => {
     try {
-        await CarbonCreditToken.methods
-            .mint(BigInt(req.body.amount * 10 ** 18))
-            .send({from: accounts[0]});
-        const val = await CarbonCreditToken.methods.totalSupply().call();
-        res.send({balance: val});
+        // await CarbonCreditToken.methods
+        //     .mint(BigInt(req.body.amount * 10 ** 18))
+        //     .send({from: accounts[0]});+
+        console.log("Lets Mint some more tokens")
+        await carbonToken.mintTokens(req.body.amount);
+        console.log("Success mint?")
+        const bal = await carbonToken.balanceOf(algodclient, regulator_address, assetID);
+        console.log("Balance of Regulator as of now",bal)
+        const val = await carbonToken.totalSupply(algodclient, regulator_address, assetID);
+        console.log("Blance after minting", val)
+        res.send({balance: val
+                // balance: bal
+        });
     } catch (e) {
         console.log(e.message)
         res.status(400).json({message: " "})

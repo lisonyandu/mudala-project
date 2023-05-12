@@ -4,13 +4,13 @@ const algosdk = require('algosdk');
 // algod.net and algod.token files within the data directory
 
 // sandbox
-const token = { 'X-API-Key': process.env.TESTNET_ALGOD_API_KEY }; // for local environment use const token = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
-const server = process.env.TESTNET_ALGOD_SERVER; //for local environment use 'http://localhost', for TestNet use PureStake "https://testnet-algorand.api.purestake.io/ps2" or AlgoExplorer "https://api.testnet.algoexplorer.io",
-const port = process.env.TESTNET_ALGOD_PORT; // for local environment use 4001;
+// const token = { 'X-API-Key': process.env.TESTNET_ALGOD_API_KEY }; // for local environment use const token = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+// const server = process.env.TESTNET_ALGOD_SERVER; //for local environment use 'http://localhost', for TestNet use PureStake "https://testnet-algorand.api.purestake.io/ps2" or AlgoExplorer "https://api.testnet.algoexplorer.io",
+// const port = process.env.TESTNET_ALGOD_PORT; // for local environment use 4001;
 // // sandbox
-// const token = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-// const server = "http://localhost";
-// const port = 4001;
+const token = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+const server = "http://localhost";
+const port = 4001;
 const assetID = 166644084;
 let algodclient = new algosdk.Algodv2(token, server, port);
 
@@ -18,26 +18,29 @@ var account1_mnemonic = "mesh enemy swarm oyster same foil kangaroo across biolo
 var account2_mnemonic = "renew census border ethics fragile photo amused alone risk shop exercise aware slide chunk illness slide valid joy album culture evolve moral pretty about fantasy";
 var account3_mnemonic = "busy zebra follow brand fire victory honey addict simple spot final garbage young critic monitor buffalo muffin sting hour ticket aunt elbow slow absorb pipe";
 var account4_mnemonic = "proud decade wheat audit verify year inquiry nothing legal human galaxy turkey brown index leaf ride runway inch fresh fury order twist couple abandon shell";
+var account5_mnemonic = "amount miracle blanket green afford age employ shoot spare column cereal aerobic bless luxury position uncle flat crazy sure myth link gesture power about manual";
 
 var regulator_pk = algosdk.mnemonicToSecretKey(account1_mnemonic);
 var seller_pk = algosdk.mnemonicToSecretKey(account2_mnemonic);
 var buyer_pk = algosdk.mnemonicToSecretKey(account3_mnemonic);
 var vendor_pk = algosdk.mnemonicToSecretKey(account4_mnemonic);
+var regulator_2_pk = algosdk.mnemonicToSecretKey(account5_mnemonic);
 
 const regulator_address = regulator_pk.addr;
 const seller_address = seller_pk.addr;
 const buyer_address = buyer_pk.addr;
 const vendor_address = vendor_pk.addr;
+const regulator_2_address = regulator_2_pk.addr;
 
 
 // Debug Console should look similar to this
 
-async function createCarbonCreditToken(regulator_pk) {
+async function createCarbonCreditToken(regulator_2_pk) {
   let params = await algodclient.getTransactionParams().do();
   console.log(params);
   let note = undefined; // arbitrary data to be stored in the transaction; here, none is stored
   let assetID = null;
-  let addr = regulator_pk.addr;
+  let addr = regulator_2_pk.addr;
   // Whether user accounts will need to be unfrozen before transacting    
   let defaultFrozen = false;
   // integer number of decimals for asset unit calculation
@@ -52,15 +55,15 @@ async function createCarbonCreditToken(regulator_pk) {
   let assetURL = "http://localhost:8080/";
   // Optional hash commitment of some sort relating to the asset. 32 character length.
   let assetMetadataHash = "16efaa3924a6fd9d3a4824799a4ac65d";
-  let manager = regulator_pk.addr;
+  let manager = regulator_2_pk.addr;
   // Specified address is considered the asset reserve
   // (it has no special privileges, this is only informational)
-  let reserve = regulator_pk.addr;
+  let reserve = regulator_2_pk.addr;
   // Specified address can freeze or unfreeze user asset holdings 
-  let freeze = regulator_pk.addr;
+  let freeze = regulator_2_pk.addr;
   // Specified address can revoke user asset holdings and send 
   // them to other addresses    
-  let clawback = regulator_pk.addr;
+  let clawback = regulator_2_pk.addr;
 
   // signing and sending "txn" allows "addr" to create an asset
   let txn = algosdk.makeAssetCreateTxnWithSuggestedParams(
@@ -80,7 +83,7 @@ async function createCarbonCreditToken(regulator_pk) {
     params
   );
 
-  let rawSignedTxn = txn.signTxn(regulator_pk.sk)
+  let rawSignedTxn = txn.signTxn(regulator_2_pk.sk)
   let tx = (await algodclient.sendRawTransaction(rawSignedTxn).do());
 
   // wait for transaction to be confirmed
@@ -88,15 +91,16 @@ async function createCarbonCreditToken(regulator_pk) {
   // Get the new asset's information from the creator account
   // let ptx = await algodclient.pendingTransactionByAddress(regulator_pk.addr).do();
   assetID = ptx["asset-index"];
-
+  console.log("New Asset ID:",assetID)
   // Print created asset information
-  totalSupply(algodclient, regulator_pk.addr, assetID);
-  balanceOf(algodclient, regulator_pk.addr, assetID);
+  totalSupply(algodclient, regulator_2_pk.addr, assetID);
+  balanceOf(algodclient, regulator_2_pk.addr, assetID);
   return {
     assetID
   }
 }
 // request tokens
+// createCarbonCreditToken(regulator_2_pk)
 
 async function transferCredits(algodclient, seller_address, amount) {
 
@@ -158,6 +162,66 @@ async function transferCredits(algodclient, seller_address, amount) {
 // // set up marketplace balance
 // let marketBalance = 0;
 // const tokensPerAlgo = 100;
+// (async () => {
+
+//   let params = await algodclient.getTransactionParams().do();
+
+//   let amount = Math.floor(Math.random() * 1000);
+//   // let amount = 1;
+//   var mnemonic = "code thrive mouse code badge example pride stereo sell viable adjust planet text close erupt embrace nature upon february weekend humble surprise shrug absorb faint";
+//   var recoveredAccount = algosdk.mnemonicToSecretKey(mnemonic);
+//   // U2VHSZL3LNGATL3IBCXFCPBTYSXYZBW2J4OGMPLTA4NA2CB4PR7AW7C77E
+//   let txn = {
+//       "from": vendor_pk.addr,
+//       "to": regulator_address,
+//       "fee": 1,
+//       "amount": amount,
+//       "firstRound": params.firstRound,
+//       "lastRound": params.lastRound,
+//       "genesisID": params.genesisID,
+//       "genesisHash": params.genesisHash,
+//       "note": undefined,
+//       "assetID": assetID
+//   };
+
+//   let signedTxn = algosdk.signTransaction(txn, vendor_pk.sk);
+//   let sendTx = await algodclient.sendRawTransaction(signedTxn.blob).do();
+
+//   console.log("Transaction : " + sendTx.txId);
+// })().catch(e => {
+//   console.log(e);
+// });
+
+async function mintTokens(amount) {
+
+  let params = await algodclient.getTransactionParams().do();
+  
+  let txn = {
+    "from": regulator_2_address,
+    "to": regulator_address,
+    "fee": 1,
+    "amount": BigInt(amount),
+    "firstRound": params.firstRound,
+    "lastRound": params.lastRound,
+    "genesisID": params.genesisID,
+    "genesisHash": params.genesisHash,
+    "note": undefined,
+    "assetID": 211374650
+};
+
+let signedTxn = algosdk.signTransaction(txn, regulator_2_pk.sk);
+let sendTx = await algodclient.sendRawTransaction(signedTxn.blob).do();
+console.log("Transaction : " + sendTx.txId);
+const confirmedTxn = await algosdk.waitForConfirmation(algodclient, sendTx.txId, 4);
+
+console.log("Regulator has minted " + sendTx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
+return{
+  amount
+}
+
+
+}
+
 
 // Function used to print created asset  total supply for account and assetid
 const totalSupply = async function (algodclient, account, assetid) {
@@ -239,12 +303,14 @@ const balanceOf = async function (algodclient, account, assetid) {
 };
 
 balanceOf(algodclient, buyer_address, 166644084)
-totalSupply(algodclient, buyer_address, 166644084)
+totalSupply(algodclient, regulator_address, 166644084)
+// mintTokens()
 module.exports = {
   createCarbonCreditToken,
   balanceOf,
   totalSupply,
   transferCredits,
-  optInAsset
+  optInAsset,
+  mintTokens
 };
 
