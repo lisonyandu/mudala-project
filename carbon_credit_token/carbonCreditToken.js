@@ -11,7 +11,8 @@ const algosdk = require('algosdk');
 const token = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const server = "http://localhost";
 const port = 4001;
-const assetID = 166644084;
+const assetID = 212175420;  //  Big new asset 166644084
+
 let algodclient = new algosdk.Algodv2(token, server, port);
 
 var account1_mnemonic = "mesh enemy swarm oyster same foil kangaroo across biology inflict remain electric angry destroy office solid parade labor place vital link coil flavor abstract convince";
@@ -35,18 +36,18 @@ const regulator_2_address = regulator_2_pk.addr;
 
 // Debug Console should look similar to this
 
-async function createCarbonCreditToken(regulator_2_pk) {
+async function createCarbonCreditToken(regulator_pk) {
   let params = await algodclient.getTransactionParams().do();
   console.log(params);
   let note = undefined; // arbitrary data to be stored in the transaction; here, none is stored
   let assetID = null;
-  let addr = regulator_2_pk.addr;
+  let addr = regulator_pk.addr;
   // Whether user accounts will need to be unfrozen before transacting    
   let defaultFrozen = false;
   // integer number of decimals for asset unit calculation
   let decimals = 2;
   // total number of this asset available for circulation   
-  let totalIssuance = 1000;
+  let totalIssuance = 10000000;
   // Used to display asset units to user    
   let unitName = "CCT";
   // Friendly name of the asset    
@@ -55,7 +56,7 @@ async function createCarbonCreditToken(regulator_2_pk) {
   let assetURL = "http://localhost:8080/";
   // Optional hash commitment of some sort relating to the asset. 32 character length.
   let assetMetadataHash = "16efaa3924a6fd9d3a4824799a4ac65d";
-  let manager = regulator_2_pk.addr;
+  let manager = regulator_pk.addr;
   // Specified address is considered the asset reserve
   // (it has no special privileges, this is only informational)
   let reserve = regulator_2_pk.addr;
@@ -83,7 +84,7 @@ async function createCarbonCreditToken(regulator_2_pk) {
     params
   );
 
-  let rawSignedTxn = txn.signTxn(regulator_2_pk.sk)
+  let rawSignedTxn = txn.signTxn(regulator_pk.sk)
   let tx = (await algodclient.sendRawTransaction(rawSignedTxn).do());
 
   // wait for transaction to be confirmed
@@ -93,14 +94,14 @@ async function createCarbonCreditToken(regulator_2_pk) {
   assetID = ptx["asset-index"];
   console.log("New Asset ID:",assetID)
   // Print created asset information
-  totalSupply(algodclient, regulator_2_pk.addr, assetID);
-  balanceOf(algodclient, regulator_2_pk.addr, assetID);
+  totalSupply(algodclient, regulator_pk.addr, assetID);
+  balanceOf(algodclient, regulator_pk.addr, assetID);
   return {
     assetID
   }
 }
 // request tokens
-// createCarbonCreditToken(regulator_2_pk)
+// createCarbonCreditToken(regulator_pk)
 
 async function transferCredits(algodclient, seller_address, amount) {
 
@@ -192,35 +193,98 @@ async function transferCredits(algodclient, seller_address, amount) {
 //   console.log(e);
 // });
 
-async function mintTokens(amount) {
 
-  let params = await algodclient.getTransactionParams().do();
-  
-  let txn = {
-    "from": regulator_2_address,
-    "to": regulator_address,
-    "fee": 1,
-    "amount": BigInt(amount),
-    "firstRound": params.firstRound,
-    "lastRound": params.lastRound,
-    "genesisID": params.genesisID,
-    "genesisHash": params.genesisHash,
-    "note": undefined,
-    "assetID": 211374650
-};
+async function mintTokens(algodclient, amount) {
 
-let signedTxn = algosdk.signTransaction(txn, regulator_2_pk.sk);
-let sendTx = await algodclient.sendRawTransaction(signedTxn.blob).do();
-console.log("Transaction : " + sendTx.txId);
-const confirmedTxn = await algosdk.waitForConfirmation(algodclient, sendTx.txId, 4);
+  // opt-in to asset
+// await optInAsset('seller');
+// console.log('Opted in');
 
-console.log("Regulator has minted " + sendTx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
+const sender = regulator_2_pk.addr;
+const recipient = regulator_address;
+const note = undefined;
+const revocationTarget = undefined;
+const closeRemainderTo = undefined;
+// const fee = 10;
+
+// check if regulator has enough credits to transfer
+// const regulatorBalance = await getTokenBalance(algodclient, sender, assetID);
+// const val = await balanceOf(algodclient, regulator_2_pk, assetID);
+
+// console.log('Regulator balance:', val.balance);
+// if (amount > val.balance) {
+//   console.log(`Regulator has insufficient credits to transfer.`);
+//   return;
+// }
+
+// get transaction parameters
+const params = await algodclient.getTransactionParams().do();
+// const amount = 100; // transfer 100 credits
+console.log(`Transferring ${amount} credits to ${recipient}...`);
+
+// create asset transfer transaction with specified amount
+const xtxn = algosdk.makeAssetTransferTxnWithSuggestedParams(
+  sender, 
+  recipient, 
+  closeRemainderTo, 
+  revocationTarget,
+  BigInt(amount),  
+  note, 
+  assetID, 
+  params
+);
+
+// Must be signed by the account sending the asset  
+console.log('Signing transaction with regulator private key...');
+const rawSignedTxn = xtxn.signTxn(regulator_2_pk.sk);
+console.log('Sending transaction to the network...');
+const xtx = await algodclient.sendRawTransaction(rawSignedTxn).do();
+console.log(`Token transfer transaction ID: ${xtx.txId}`);
+
+// Wait for confirmation
+const confirmedTxn = await algosdk.waitForConfirmation(algodclient, xtx.txId, 4);
+
+//Get the completed Transaction
+console.log("Transaction " + xtx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
+console.log(`Regulator has successfully transferred ${amount} credits to ${recipient}`);
+
 return{
   amount
 }
-
-
 }
+
+
+
+
+// async function mintTokens(amount) {
+
+//   let params = await algodclient.getTransactionParams().do();
+  
+//   let txn = {
+//     "from": regulator_2_address,
+//     "to": regulator_address,
+//     "fee": 1,
+//     "amount": amount,
+//     "firstRound": params.firstRound,
+//     "lastRound": params.lastRound,
+//     "genesisID": params.genesisID,
+//     "genesisHash": params.genesisHash,
+//     "note": undefined,
+//     "assetID": assetID
+// };
+
+// let signedTxn = algosdk.signTransaction(txn, regulator_2_pk.sk);
+// let sendTx = await algodclient.sendRawTransaction(signedTxn.blob).do();
+// console.log("Transaction : " + sendTx.txId);
+// const confirmedTxn = await algosdk.waitForConfirmation(algodclient, sendTx.txId, 4);
+
+// console.log("Regulator has minted " + amount + "CCT,  confirmed in round " + confirmedTxn["confirmed-round"]);
+// return{
+//   amount
+// }
+
+
+// }
 
 
 // Function used to print created asset  total supply for account and assetid
@@ -302,9 +366,9 @@ const balanceOf = async function (algodclient, account, assetid) {
   };
 };
 
-balanceOf(algodclient, buyer_address, 166644084)
-totalSupply(algodclient, regulator_address, 166644084)
-// mintTokens()
+// balanceOf(algodclient, buyer_address, 166644084)
+// totalSupply(algodclient, regulator_address, 166644084)
+// // mintTokens()
 module.exports = {
   createCarbonCreditToken,
   balanceOf,

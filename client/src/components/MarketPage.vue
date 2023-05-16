@@ -177,8 +177,9 @@ let algodclient = new algosdk.Algodv2(token, server, port);
 // import { useWallet } from 'use-wallet'
 // import BigInt from 'big-integer'
 console.log(algodclient)
-const assetID = 166644084;
+const assetID = 212175420;
 const vendor_address = "NWR46NHXFRJBNTQCRCT2NTNYH57RUKSPYLVWZYN6BVLLLGTZTEPS5S6PHE"
+ const walletStore = useWalletStore();
 // import {SignerTransaction} from "@perawallet/connect/dist/util/model/peraWalletModels";
   const peraWallet = new PeraWalletConnect({ chainId: 416002 });
 export default {
@@ -199,7 +200,7 @@ export default {
   },
 
   setup() {
-  const walletStore = useWalletStore();
+ 
   // const peraWallet = new PeraWalletConnect({ chainId: 416002 });
   
   const connectWallet = async () => {
@@ -285,12 +286,44 @@ mounted() {
 async buy() {
   this.close();
   try {
-
+    let params = await algodclient.getTransactionParams().do();
     await optInAsset('buyer');
     console.log("buyer address", this.walletStore.walletData)
     console.log("buyer amount", this.amount)
-    const requests = await buyCredits(algodclient, this.walletStore.walletData, this.amount);
 
+    const tokensPerAlgo = 100; // Conversion rate: 100 tokens per Algo
+    const algosValue = this.amount / tokensPerAlgo;
+    // var account3_mnemonic = "busy zebra follow brand fire victory honey addict simple spot final garbage young critic monitor buffalo muffin sting hour ticket aunt elbow slow absorb pipe";
+    // var buyer_pk = algosdk.mnemonicToSecretKey(account3_mnemonic);
+  // convert Algos value to microalgos
+  
+    const sender = this.walletStore.walletData;
+    const recipient = vendor_address;
+    const microalgosValue = algosdk.algosToMicroalgos(algosValue);
+
+    // create Algo transfer transaction with suggested params
+    const algoTxn = algosdk.makePaymentTxnWithSuggestedParams(
+      sender,
+      recipient,
+      microalgosValue,
+      undefined,
+      undefined,
+      params
+    );
+    // sign Algo transfer transaction with vendor private key
+    const rawSignedAlgoTxn =  [{txn:algoTxn, signers: [this.walletStore.walletData]}];
+    const signedTxn = await peraWallet.signTransaction([rawSignedAlgoTxn]);
+
+    // send Algo transfer transaction and log transaction ID
+    const algoTx = await algodclient.sendRawTransaction(signedTxn).do();
+    console.log(`Algo Transfer Transaction ID: ${algoTx.txId}`);
+
+    // Wait for Algo transfer transaction confirmation
+    const confirmedAlgoTxn = await algosdk.waitForConfirmation(algodclient, algoTx.txId, 4);
+    console.log("Algo Transfer Transaction confirmed in round " + confirmedAlgoTxn["confirmed-round"]);
+
+    const requests = await buyCredits(algodclient, this.walletStore.walletData, this.amount);
+    
     this.successToast('Success', `You have purchased ${this.amount} CCT tokens`);
     await this.myAccount(useWalletStore().walletData);
     await this.marketAccount();
@@ -311,6 +344,8 @@ async buy() {
 async sell() {
   this.close();
   try {
+     // get transaction parameters
+  let params = await algodclient.getTransactionParams().do();
     // const peraWallet = new PeraWalletConnect({ chainId: 416002 });
     // Trigger the selling of tokens
     // await optInAsset('vendor');
@@ -346,6 +381,41 @@ async sell() {
 
     // Get the completed Transaction
     console.log("Transaction " + xtx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
+
+    const tokensPerAlgo = 100; // Conversion rate: 100 tokens per Algo
+    const algosValue = this.amount / tokensPerAlgo;
+    var account4_mnemonic = "proud decade wheat audit verify year inquiry nothing legal human galaxy turkey brown index leaf ride runway inch fresh fury order twist couple abandon shell";
+    var vendor_pk = algosdk.mnemonicToSecretKey(account4_mnemonic);
+  // convert Algos value to microalgos
+  
+  const sender = vendor_address;
+  const recipient = this.walletStore.walletData;
+  const microalgosValue = algosdk.algosToMicroalgos(algosValue);
+
+  // create Algo transfer transaction with suggested params
+  const algoTxn = algosdk.makePaymentTxnWithSuggestedParams(
+    sender,
+    recipient,
+    microalgosValue,
+    undefined,
+    undefined,
+    params
+  );
+  // sign Algo transfer transaction with vendor private key
+  const rawSignedAlgoTxn = algoTxn.signTxn(vendor_pk.sk);
+
+  // send Algo transfer transaction and log transaction ID
+  const algoTx = await algodclient.sendRawTransaction(rawSignedAlgoTxn).do();
+  console.log(`Algo Transfer Transaction ID: ${algoTx.txId}`);
+
+  // Wait for Algo transfer transaction confirmation
+  const confirmedAlgoTxn = await algosdk.waitForConfirmation(algodclient, algoTx.txId, 4);
+  console.log("Algo Transfer Transaction confirmed in round " + confirmedAlgoTxn["confirmed-round"]);
+  
+   // update seller's Algo balance
+   // const algoAmount = amount / tokensPerAlgo;
+  // const sellerAlgoBalance = await algodclient.accountInformation(sender).do();
+  // const sellerNewAlgoBalance = sellerAlgoBalance.amount + algoAmount;
 
     this.successToast('Success', `You have sold ${this.amount} CCT tokens!`)
     await this.myAccount(useWalletStore().walletData);

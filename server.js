@@ -18,7 +18,7 @@ const fs = require("fs");
 // var CarbonCreditToken;
 var accounts;
 // var assetID;
-const assetID = 166644084;
+const assetID = 212175420;
 
 const initModels = require("./models/init-models");
 const models = initModels(sequelise);
@@ -162,13 +162,13 @@ app.post("/api/mint", async (req, res) => {
         //     .mint(BigInt(req.body.amount * 10 ** 18))
         //     .send({from: accounts[0]});+
         console.log("Lets Mint some more tokens")
-        await carbonToken.mintTokens(req.body.amount);
-        console.log("Success mint?")
+        const val1 = await carbonToken.mintTokens(algodclient, parseInt( req.body.amount));
+        console.log("Success mint?", val1)
         const bal = await carbonToken.balanceOf(algodclient, regulator_address, assetID);
         console.log("Balance of Regulator as of now",bal)
         const val = await carbonToken.totalSupply(algodclient, regulator_address, assetID);
         console.log("Blance after minting", val)
-        res.send({balance: val
+        res.send({amount: val1
                 // balance: bal
         });
     } catch (e) {

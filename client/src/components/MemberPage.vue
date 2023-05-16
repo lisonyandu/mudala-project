@@ -49,6 +49,7 @@
               <p><i class="pi pi-check-circle text-green-800 mr-2"></i> Check balance</p>
               <p><i class="pi pi-check-circle text-green-800 mr-2"></i> Request credits</p>
               <p><i class="pi pi-check-circle text-green-800 mr-2"></i> Manage your account</p>
+              <a class="pi pi-check-circle text-green-800 mr-2"  href="https://testnet.explorer.perawallet.app/assets/212175420/"> Click here to Opt-in https://testnet.explorer.perawallet.app/assets/212175420/ </a>
             </div>
 
           </section>
@@ -207,6 +208,11 @@ const walletStore = useWalletStore();
 
 const port = 4001;
 let algodclient = new algosdk.Algodv2(token, server, port);
+
+// You must sign a 0 ALGO transaction to prove ownership of this address.
+// This transaction does not get published to the network,
+// it is only used to verify account ownership on AlgoExplorer.
+
 
 
 const vendor_address = "NWR46NHXFRJBNTQCRCT2NTNYH57RUKSPYLVWZYN6BVLLLGTZTEPS5S6PHE"
