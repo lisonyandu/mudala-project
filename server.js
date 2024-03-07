@@ -4,21 +4,19 @@ const sequelise = require("./config/db");
 const memberRouter = require("./routes/member");
 const validatorRouter = require("./routes/validator");
 
-require('dotenv').config();
+require('dotenv').config({ path: "C:/Users/User/Desktop/mudala-back-end/.env.local" });
 const algosdk = require('algosdk');
-// const marketplace = require('./carbon_credit_token/marketplace');
-const carbonToken = require('./carbon_credit_token/carbonCreditToken');
+const algotxns = require("C:/Users/User/Desktop/mudala-back-end/algorand/index.js");
 
 
 // const Web3 = require("web3");
 const fs = require("fs");
 
 
-// const web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
-// var CarbonCreditToken;
+
 var accounts;
 // var assetID;
-const assetID = 212175420;
+// const assetID = 212175420;
 
 const initModels = require("./models/init-models");
 const models = initModels(sequelise);
@@ -28,16 +26,21 @@ const statuses = require("./utils/statuses");
 // const PORT = process.env.PORT || 3001;
 const PORT = process.env.PORT;
 const HOST = "0.0.0.0";
-// // sandbox
-// const token = { 'X-API-Key': process.env.TESTNET_ALGOD_API_KEY }; // for local environment use const token = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
-// const server = process.env.TESTNET_ALGOD_SERVER; //for local environment use 'http://localhost', for TestNet use PureStake "https://testnet-algorand.api.purestake.io/ps2" or AlgoExplorer "https://api.testnet.algoexplorer.io",
-// const port = process.env.TESTNET_ALGOD_PORT; // for local environment use 4001;
 
+
+const getAlgodClient = require("C:/Users/User/Desktop/mudala-back-end/clients/index.js");
 // sandbox  local
-const token = process.env.DEV_ALGOD_API_KEY;
-const server = process.env.DEV_ALGOD_SERVER;
-const port = process.env.DEV_ALGOD_PORT;
-let algodclient = new algosdk.Algodv2(token, server, port);
+const network = process.env.NEXT_PUBLIC_NETWORK || "SandNet";
+const algodClient = getAlgodClient.getAlgodClient(network)
+
+
+const regulator_address = process.env.NEXT_PUBLIC_REGULATOR_ADDR
+const vendor_address = process.env.NEXT_PUBLIC_VENDOR_ADDR
+const regulator = algosdk.mnemonicToSecretKey(process.env.NEXT_PUBLIC_REGULATOR_MNEMONIC);
+const regulator_2 = algosdk.mnemonicToSecretKey(process.env.NEXT_PUBLIC_REGULATOR_MNEMONIC_2);
+const assetID = parseInt(process.env.NEXT_PUBLIC_FT_ASSET_ID);
+
+
 
 const app = express();
 app.use(express.static("public"));
@@ -53,15 +56,12 @@ app.get("/", (req, res) => {
 app.use("/member", memberRouter);
 app.use("/validator", validatorRouter);
 
-const regulator_address = process.env.ACCOUNT1_ADDRESS
-const assetID_2 = process.env.assetID_2
 
 app.get("/api/validator", async (req, res) => {
-  // const assetID = await carbonToken.createCarbonCreditToken(regulator_address);
-  // console.log(assetID);
-  const balance = await carbonToken.balanceOf(algodclient, regulator_address, assetID);
+
+  const balance = await algotxns.balanceOf(algodClient, regulator_address, assetID);
   console.log(balance);
-  const total = await carbonToken.totalSupply(algodclient, regulator_address, assetID);
+  const total = await algotxns.totalSupply(algodClient, regulator_address, assetID);
   console.log(total);
   res.send({
     totalsupply: total.total_supply,
@@ -72,8 +72,8 @@ app.get("/api/validator", async (req, res) => {
 
 app.get("/api/totalsupply", async (req, res) => {
     try {
-        // const val = await CarbonCreditToken.methods.totalSupply().call();
-        const val = await carbonToken.totalSupply(algodclient, regulator_address, assetID.assetID);
+       
+        const val = await algotxns.totalSupply(algodClient, regulator_address, assetID.assetID);
         res.send({balance: val});
     } catch (e) {
         console.log(e.message)
@@ -82,12 +82,11 @@ app.get("/api/totalsupply", async (req, res) => {
 
 app.get("/api/balance", async (req, res) => {
     try {
-        // const val = await CarbonCreditToken.methods
-        // const val = carbonToken.balanceOf(req.body.address)
+    
         console.log(member.walletaddress)
-        const val = await carbonToken.balanceOf(algodclient, member.walletaddress, assetID);
+        const val = await algotxns.balanceOf(algodClient, member.walletaddress, assetID);
         console.log(val)
-        //     .call();
+
         res.send({balance: val});
     } catch (e) {
         console.log(e.message)
@@ -101,9 +100,8 @@ app.post("/api/myaccount", async (req, res) => {
             
         });
     
-            // console.log(member.walletaddress)
-            const val = await carbonToken.balanceOf(algodclient, member.walletaddress, assetID);
-            // console.log(val)
+            const val = await algotxns.balanceOf(algodClient, member.walletaddress, assetID);
+        
         res.send({
             balance: val['balance'],
             membertype: member.membertype,
@@ -118,24 +116,19 @@ app.post("/api/myaccount", async (req, res) => {
 });
 app.post("/api/transfer", async (req, res) => {
     try {
-        // console.log(req.body.address);
-        // const gasPrice = await web3.eth.getGasPrice();
-        // const tokenTransferResult = await CarbonCreditToken.methods
-        //     .transfer(
-        //         req.body.walletaddress,
-        //         web3.utils.toWei(req.body.amount.toString(), "ETHER")
-        //     )
-        //     .send({
-        //         from: accounts[0],
-        //         gasPrice,
-        //     });
-        // console.log(req.body.memberid);
-        // const vendor_address = process.env.
-        await carbonToken.optInAsset('seller');
 
-        console.log("seller address", req.body.walletaddress)
-        console.log("credit amount", req.body.amount)
-        await carbonToken.transferCredits(algodclient, req.body.walletaddress, req.body.amount);
+        // await algotxns.optInAsset('seller');
+
+        const xtxn = await algotxns.getPaymentTxn(algodClient, regulator.addr, req.body.walletaddress,assetID,req.body.amount);
+        // Must be signed by the account sending the asset  
+        const rawSignedTxn = xtxn.signTxn(regulator.sk);
+        console.log('Sending transaction to the network...sending 100 algos');
+        const xtx = await algodClient.sendRawTransaction(rawSignedTxn).do();
+        // Wait for confirmation
+        const confirmedTxn = await algosdk.waitForConfirmation(algodClient, xtx.txId, 4);
+        //Get the completed Transaction
+        console.log("Transaction " + xtx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
+
 
         await models.CreditRequests.update(
             {
@@ -158,17 +151,22 @@ app.post("/api/transfer", async (req, res) => {
 
 app.post("/api/mint", async (req, res) => {
     try {
-        // await CarbonCreditToken.methods
-        //     .mint(BigInt(req.body.amount * 10 ** 18))
-        //     .send({from: accounts[0]});+
+
         console.log("Lets Mint some more tokens")
-        const val1 = await carbonToken.mintTokens(algodclient, parseInt( req.body.amount));
-        console.log("Success mint?", val1)
-        const bal = await carbonToken.balanceOf(algodclient, regulator_address, assetID);
-        console.log("Balance of Regulator as of now",bal)
-        const val = await carbonToken.totalSupply(algodclient, regulator_address, assetID);
-        console.log("Blance after minting", val)
-        res.send({amount: val1
+        // Convert req.body.amount to BigInt
+        const amount = parseInt(req.body.amount);
+      
+        const xtxn = await algotxns.getPaymentTxn(algodClient, regulator_2.addr, regulator_address,assetID, amount);
+         // Must be signed by the account sending the asset  
+        const rawSignedTxn = xtxn.signTxn(regulator_2.sk);
+        console.log('Sending transaction to the network...sending 100 algos');
+        const xtx = await algodClient.sendRawTransaction(rawSignedTxn).do();
+         // Wait for confirmation
+        const confirmedTxn = await algosdk.waitForConfirmation(algodClient, xtx.txId, 4);
+         //Get the completed Transaction
+        console.log("Transaction " + xtx.txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
+
+        res.send({amount: amount
                 // balance: bal
         });
     } catch (e) {
@@ -176,12 +174,61 @@ app.post("/api/mint", async (req, res) => {
         res.status(400).json({message: " "})
     }
 });
+// Example backend route (express.js)
+
+app.post('/api/authenticate', async (req, res) => {
+    try {
+      const { accountAddress } = req.body;
+  
+      // Validate address (ensure this is correct for algosdk validation)
+      if (!algosdk.isValidAddress(accountAddress)) {
+        return res.status(400).json({ error: 'Invalid Algorand address' });
+      }
+  
+    // Get the unsigned transaction (Allow 'amount: 0' for your logic)
+    const xtxn = await algotxns.getPaymentTxn(algodClient, accountAddress, vendor_address, assetID, 0);
+    console.log("Transaction before encoding: ",xtxn)
+    // Success Response: Distinguish Zero Algo Transactions
+    const encodedTxn = algosdk.encodeObj([xtxn]);
+
+    console.log("Transaction after encoding: ",encodedTxn)
+    res.set('Content-Type', 'application/octet-stream');
+    res.send({ txn: encodedTxn, isZeroAlgoTransaction: true }); 
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+  
+
+
+app.post('/api/submitTransaction', async (req, res) => {
+    try {
+      const { signedTxn } = req.body;
+  
+
+      console.log(signedTxn)
+      // Validate signed transaction
+    //   if (!algosdk.isv(signedTxn)) {
+    //     return res.status(400).json({ error: 'Invalid signed transaction' });
+    //   }
+  
+      // Submit the signed transaction to the Algorand network
+      const result = await algodClient.sendRawTransaction(signedTxn).do();
+      console.log("Submitting transaction to the network!")
+      // Respond with the result
+      res.status(200).json({ message: 'Transaction submitted successfully', result });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
 
 sequelise
     .authenticate()
     .then(async () => {
         console.log("Database connected...");
-        const accounts = await algodclient.accounts;
+        const accounts = await algodClient.accounts;
         console.log(accounts);
         // networkId = await web3.eth.net.getId();
         // contractAddress = artifact.networks[networkId].address;
@@ -204,11 +251,3 @@ sequelise
     .catch((err) => console.log("Error synching models: " + err));
 
 module.exports = app;
-
-
-// app.use(function(req, res, next) {
-//     res.header("Access-Control-Allow-Origin", "*");
-//     res.header("Access-Control-Allow-Methods", "GET, PUT, POST");
-//     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-//     next();
-// });

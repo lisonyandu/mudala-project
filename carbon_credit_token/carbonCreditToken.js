@@ -4,13 +4,11 @@ const algosdk = require('algosdk');
 // algod.net and algod.token files within the data directory
 
 // sandbox
-// const token = { 'X-API-Key': process.env.TESTNET_ALGOD_API_KEY }; // for local environment use const token = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
-// const server = process.env.TESTNET_ALGOD_SERVER; //for local environment use 'http://localhost', for TestNet use PureStake "https://testnet-algorand.api.purestake.io/ps2" or AlgoExplorer "https://api.testnet.algoexplorer.io",
-// const port = process.env.TESTNET_ALGOD_PORT; // for local environment use 4001;
-// // sandbox
-const token = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-const server = "http://localhost";
-const port = 4001;
+const token = '' // for local environment use const token = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+const server = 'https://testnet-api.algonode.cloud'; //for local environment use 'http://localhost', for TestNet use PureStake "https://testnet-algorand.api.purestake.io/ps2" or AlgoExplorer "https://api.testnet.algoexplorer.io",
+const port = 443; // for local environment use 4001;
+
+
 const assetID = 212175420;  //  Big new asset 166644084
 
 let algodclient = new algosdk.Algodv2(token, server, port);
@@ -36,8 +34,11 @@ const regulator_2_address = regulator_2_pk.addr;
 
 // Debug Console should look similar to this
 
+// const acctInfo = await algodClient.accountInformation(acct.addr).do();
+// console.log(`Account balance: ${acctInfo.amount} microAlgos`);
+
 async function createCarbonCreditToken(regulator_pk) {
-  let params = await algodclient.getTransactionParams().do();
+  let params = await algodClient.getTransactionParams().do();
   console.log(params);
   let note = undefined; // arbitrary data to be stored in the transaction; here, none is stored
   let assetID = null;
@@ -85,17 +86,17 @@ async function createCarbonCreditToken(regulator_pk) {
   );
 
   let rawSignedTxn = txn.signTxn(regulator_pk.sk)
-  let tx = (await algodclient.sendRawTransaction(rawSignedTxn).do());
+  let tx = (await algodClient.sendRawTransaction(rawSignedTxn).do());
 
   // wait for transaction to be confirmed
-  const ptx = await algosdk.waitForConfirmation(algodclient, tx.txId, 100 );
+  const ptx = await algosdk.waitForConfirmation(algodClient, tx.txId, 4);
   // Get the new asset's information from the creator account
   // let ptx = await algodclient.pendingTransactionByAddress(regulator_pk.addr).do();
   assetID = ptx["asset-index"];
   console.log("New Asset ID:",assetID)
   // Print created asset information
-  totalSupply(algodclient, regulator_pk.addr, assetID);
-  balanceOf(algodclient, regulator_pk.addr, assetID);
+  totalSupply(algodClient, regulator_pk.addr, assetID);
+  balanceOf(algodClient, regulator_pk.addr, assetID);
   return {
     assetID
   }
@@ -196,26 +197,12 @@ async function transferCredits(algodclient, seller_address, amount) {
 
 async function mintTokens(algodclient, amount) {
 
-  // opt-in to asset
-// await optInAsset('seller');
-// console.log('Opted in');
 
 const sender = regulator_2_pk.addr;
 const recipient = regulator_address;
 const note = undefined;
 const revocationTarget = undefined;
 const closeRemainderTo = undefined;
-// const fee = 10;
-
-// check if regulator has enough credits to transfer
-// const regulatorBalance = await getTokenBalance(algodclient, sender, assetID);
-// const val = await balanceOf(algodclient, regulator_2_pk, assetID);
-
-// console.log('Regulator balance:', val.balance);
-// if (amount > val.balance) {
-//   console.log(`Regulator has insufficient credits to transfer.`);
-//   return;
-// }
 
 // get transaction parameters
 const params = await algodclient.getTransactionParams().do();
@@ -366,8 +353,8 @@ const balanceOf = async function (algodclient, account, assetid) {
   };
 };
 
-// balanceOf(algodclient, buyer_address, 166644084)
-// totalSupply(algodclient, regulator_address, 166644084)
+balanceOf(algodclient, buyer_address, assetID)
+totalSupply(algodclient, regulator_address, assetID)
 // // mintTokens()
 module.exports = {
   createCarbonCreditToken,
