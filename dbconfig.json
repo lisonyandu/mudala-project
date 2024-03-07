@@ -1,0 +1,26 @@
+{
+  "development": {
+    "username": "root",
+    "password": "password",
+    "database": "project",
+    "host": "database.db",
+    "dialect": "sqlite",
+    "logging": true
+  },
+  "test": {
+    "username": "root",
+    "password": "password",
+    "database": "project",
+    "host": "database.db",
+    "dialect": "sqlite",
+    "logging": true
+  },
+  "production": {
+    "username": "root",
+    "password": "password",
+    "database": "project",
+    "host": "database.db",
+    "dialect": "sqlite",
+    "logging": false
+  }
+}

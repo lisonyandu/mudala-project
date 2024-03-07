@@ -70,5 +70,5 @@ sandbox/
 
 #dababase stuff
 /public
-database.db
-dbconfig.json
+# database.db
+# dbconfig.json
