@@ -4,9 +4,9 @@ const sequelise = require("./config/db");
 const memberRouter = require("./routes/member");
 const validatorRouter = require("./routes/validator");
 
-require('dotenv').config({ path: "C:/Users/User/Desktop/mudala-back-end/.env.local" });
+require('dotenv').config({ path: "./.env.local" });
 const algosdk = require('algosdk');
-const algotxns = require("C:/Users/User/Desktop/mudala-back-end/algorand/index.js");
+const algotxns = require("./algorand/index.js");
 
 
 // const Web3 = require("web3");
@@ -28,7 +28,7 @@ const PORT = process.env.PORT;
 const HOST = "0.0.0.0";
 
 
-const getAlgodClient = require("C:/Users/User/Desktop/mudala-back-end/clients/index.js");
+const getAlgodClient = require("./clients/index.js");
 // sandbox  local
 const network = process.env.NEXT_PUBLIC_NETWORK || "SandNet";
 const algodClient = getAlgodClient.getAlgodClient(network)
