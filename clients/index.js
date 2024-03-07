@@ -1,6 +1,6 @@
 
 const algosdk = require('algosdk');
-require('dotenv').config({ path: "C:/Users/User/Desktop/mudala-back-end/.env.local" });
+require('dotenv').config({ path: "../.env.local" });
 const getNetworkCredentials = (network) => {
     let algod_token = process.env.NEXT_PUBLIC_ALGOD_TOKEN;
     let algod_address = process.env.NEXT_PUBLIC_ALGOD_ADDRESS_TESTNET;
