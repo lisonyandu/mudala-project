@@ -2,7 +2,8 @@
 
 Mudala is a carbon offsetting exchange solution powered by Algorand blockchain technology.
 
-![1682678892747](image/README/1682678892747.png)
+![Screenshot 2023-10-26 095524](https://github.com/lisonyandu/mudala-project/assets/51886336/486cd92b-c768-4889-97c0-bdfb1e34264b)
+
 
 # Tech Stack
 
