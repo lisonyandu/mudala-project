@@ -8,60 +8,76 @@ Mudala is a carbon offsetting exchange solution powered by Algorand blockchain t
 # Tech Stack
 
 * `Express`
-* `Vue`
+* `Sequelize` + `SQLite`
 * `Algorand javascript sdk`
+
+The frontend (Vue) lives in a separate repo: `mudala-frond-end`.
 
 ## Installation
 
-Install project dependencies
-
-- npm install
-- cd client
-- npm install
-
-# Setup
-
-Sandbox
-
-Open docker and run
-
-`$ ./sandbox up`
-
-Backend
-
-Run this command in the root folder
-
-`$ npm run dev`
-
-The API will be accessible on `http://localhost:3000`
-
-Frontend
-
-Navigate to client folder
-
-`$ cd client`
-
-`$ npm run serve`
-
-Populate `.env` file for your environment variables
-
+```
+npm install
 ```
 
+## Setup
+
+No local Algorand node or Docker sandbox is required. This project talks to
+the public Algorand TestNet through [AlgoNode](https://algonode.io) (free,
+no API key needed).
+
+Populate `.env.local` in the project root:
+
+```
 NODE_ENV=development
 PORT=3000
-BLOCKCHAINENV=TESTNET
-DEV_ALGOD_API_KEY=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-DEV_ALGOD_SERVER=http://localhost
-DEV_ALGOD_PORT=4001
-DEV_ALGOINDEXER_PORT=8980
-TESTNET_ALGOD_API_KEY=PLEASE_REPLACE_ME
-TESTNET_ALGOD_SERVER=https://testnet-algorand.api.purestake.io/ps2
-TESTNET_ALGOINDEXER_SERVER=https://testnet-algorand.api.purestake.io/idx2
-TESTNET_ALGOD_PORT=
-VENDOR_ADDRESS=PLEASE_REPLACE_ME
-REGULATOR_ADDRESS=PLEASE_REPLACE_ME
+
+NEXT_PUBLIC_NETWORK="TestNet"
+
+NEXT_PUBLIC_ALGOD_ADDRESS_TESTNET="https://testnet-api.algonode.cloud"
+NEXT_PUBLIC_ALGOD_TOKEN_TESTNET=""
+NEXT_PUBLIC_ALGOD_PORT_TESTNET=""
+
+NEXT_PUBLIC_INDEXER_ADDRESS_TESTNET="https://testnet-idx.algonode.cloud"
+NEXT_PUBLIC_INDEXER_TOKEN_TESTNET=""
+NEXT_PUBLIC_INDEXER_PORT_TESTNET=""
+
+# Regulator account (mints/approves credits) and its reserve account
+NEXT_PUBLIC_REGULATOR_ADDR=
+NEXT_PUBLIC_REGULATOR_MNEMONIC=
+NEXT_PUBLIC_REGULATOR_ADDR_2=
+NEXT_PUBLIC_REGULATOR_MNEMONIC_2=
+
+# Mudala Exchange account (mediates marketplace buy/sell)
+NEXT_PUBLIC_EXCHANGE_ADDR=
+NEXT_PUBLIC_EXCHANGE_MNEMONIC=
+NEXT_PUBLIC_CCT_PRICE_ALGO=0.1
+
+NEXT_PUBLIC_FT_ASSET_ID=
+```
+
+All of the above are TestNet-only accounts/keys. Never put MainNet mnemonics
+in this file, and don't commit real production secrets to `.env.local`.
+
+Before the marketplace can trade, the exchange account needs to opt into the
+CCT asset and hold some starting balance. Run once per environment:
 
 ```
+npm run setup:exchange -- 100
+```
+
+(the number is how much CCT to seed it with; it also opts the account into
+the asset if it hasn't already).
+
+Then start the backend:
+
+```
+npm run dev
+```
+
+The API will be accessible on `http://localhost:3000`. Run the frontend
+separately from the `mudala-frond-end` repo (`npm run serve`, on
+`http://localhost:8080` by default) — its dev server proxies `/api`,
+`/member` and `/validator` calls back to this backend.
 
 Create a `dbconfig.json` file within the root folder of the project and populate it with the following configuration, replacing blank details with your own.
 

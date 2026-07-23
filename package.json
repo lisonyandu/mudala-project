@@ -12,6 +12,7 @@
         "build-client": "mkdir -p public && cd client && npm run build-app && cd ..",
         "start": "node server.js",
         "dev": "nodemon server.js --host 0.0.0.0",
+        "setup:exchange": "node scripts/setup-exchange.js",
         "format": "prettier --write 'server.js' 'routes/*.js' 'models/*.js' 'config/*.js'"
     },
     "repository": {

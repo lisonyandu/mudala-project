@@ -34,6 +34,19 @@ const getPaymentTxn = async (algodClient, from, to, assetId, amount) => {
   
 
   
+  const getAuthTxn = async (algodClient, accountAddress) => {
+    // Zero-ALGO self-payment used only to prove control of accountAddress via signature.
+    // No asset opt-in required, unlike a zero-amount ASA transfer.
+    const suggestedParams = await algodClient.getTransactionParams().do();
+
+    return algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+      from: accountAddress,
+      to: accountAddress,
+      amount: 0,
+      suggestedParams,
+    });
+  };
+
   const getAssetOptInTxn = async (algodClient, accAddr, assetId) => {
     const suggestedParams = await algodClient.getTransactionParams().do();
   
@@ -79,4 +92,4 @@ const getPaymentTxn = async (algodClient, from, to, assetId, amount) => {
   };
  
   
-module.exports  = { getPaymentTxn, signAndSubmit, getAssetOptInTxn,totalSupply,balanceOf};
+module.exports  = { getPaymentTxn, getAuthTxn, signAndSubmit, getAssetOptInTxn,totalSupply,balanceOf};

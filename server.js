@@ -40,6 +40,12 @@ const regulator = algosdk.mnemonicToSecretKey(process.env.NEXT_PUBLIC_REGULATOR_
 const regulator_2 = algosdk.mnemonicToSecretKey(process.env.NEXT_PUBLIC_REGULATOR_MNEMONIC_2);
 const assetID = parseInt(process.env.NEXT_PUBLIC_FT_ASSET_ID);
 
+// Mudala Exchange (marketplace treasury) - mediates buy/sell trades
+const exchange_address = process.env.NEXT_PUBLIC_EXCHANGE_ADDR;
+const exchange = algosdk.mnemonicToSecretKey(process.env.NEXT_PUBLIC_EXCHANGE_MNEMONIC);
+const CCT_PRICE_ALGO = parseFloat(process.env.NEXT_PUBLIC_CCT_PRICE_ALGO || "0.1");
+const BROKER_FEE_PCT = 0.01;
+
 
 
 const app = express();
@@ -118,8 +124,9 @@ app.post("/api/transfer", async (req, res) => {
     try {
 
         // await algotxns.optInAsset('seller');
+        const amount = parseInt(req.body.amount);
 
-        const xtxn = await algotxns.getPaymentTxn(algodClient, regulator.addr, req.body.walletaddress,assetID,req.body.amount);
+        const xtxn = await algotxns.getPaymentTxn(algodClient, regulator.addr, req.body.walletaddress,assetID,amount);
         // Must be signed by the account sending the asset  
         const rawSignedTxn = xtxn.signTxn(regulator.sk);
         console.log('Sending transaction to the network...sending 100 algos');
@@ -174,50 +181,173 @@ app.post("/api/mint", async (req, res) => {
         res.status(400).json({message: " "})
     }
 });
+app.get("/api/config", (req, res) => {
+    res.send({
+        exchangeAddress: exchange_address,
+        assetId: assetID,
+        cctPriceAlgo: CCT_PRICE_ALGO,
+    });
+});
+
+app.get("/api/market", async (req, res) => {
+    try {
+        const balance = await algotxns.balanceOf(algodClient, exchange_address, assetID);
+        res.send({balance: balance.balance});
+    } catch (e) {
+        console.log(e.message);
+        res.status(400).json({message: "error"});
+    }
+});
+
+// Sell flow, mirrors /api/authenticate's build->sign->submit pattern:
+// 1) prepare: backend builds the unsigned CCT->exchange transfer, seller signs it via Pera
+// 2) submit: backend relays the signed transfer, confirms it, then pays the seller in ALGO (minus broker fee)
+app.post("/api/market/sell/prepare", async (req, res) => {
+    try {
+        const {walletaddress, amount} = req.body;
+        if (!algosdk.isValidAddress(walletaddress)) {
+            return res.status(400).json({error: "Invalid Algorand address"});
+        }
+        const cctAmount = parseInt(amount);
+        if (!(cctAmount > 0)) {
+            return res.status(400).json({error: "Invalid amount"});
+        }
+
+        const xtxn = await algotxns.getPaymentTxn(algodClient, walletaddress, exchange_address, assetID, cctAmount);
+        const encodedTxn = algosdk.encodeUnsignedTransaction(xtxn);
+        res.status(200).json({txn: Buffer.from(encodedTxn).toString("base64")});
+    } catch (e) {
+        console.log(e.message || e);
+        res.status(400).json({message: e.message || "Unable to prepare sell transaction"});
+    }
+});
+
+app.post("/api/market/sell/submit", async (req, res) => {
+    try {
+        const {walletaddress, amount, signedTxn} = req.body;
+        const cctAmount = parseInt(amount);
+
+        const rawSignedTxn = Buffer.from(signedTxn, "base64");
+        const xtx = await algodClient.sendRawTransaction(rawSignedTxn).do();
+        await algosdk.waitForConfirmation(algodClient, xtx.txId, 4);
+
+        const payoutAlgo = cctAmount * CCT_PRICE_ALGO * (1 - BROKER_FEE_PCT);
+        const payoutMicroAlgos = Math.round(payoutAlgo * 1e6);
+
+        const suggestedParams = await algodClient.getTransactionParams().do();
+        const payTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+            from: exchange.addr,
+            to: walletaddress,
+            amount: payoutMicroAlgos,
+            suggestedParams,
+        });
+        const rawSignedPayTxn = payTxn.signTxn(exchange.sk);
+        const payoutTx = await algodClient.sendRawTransaction(rawSignedPayTxn).do();
+        await algosdk.waitForConfirmation(algodClient, payoutTx.txId, 4);
+
+        res.status(200).json({message: "sold", payoutAlgo, sellTxId: xtx.txId, payoutTxId: payoutTx.txId});
+    } catch (e) {
+        console.log(e.message || e);
+        res.status(400).json({message: e.message || "Unable to complete sale"});
+    }
+});
+
+// Buy flow, same shape: prepare an ALGO->exchange payment for the buyer to sign,
+// then relay + confirm it before transferring the corresponding CCT to the buyer.
+app.post("/api/market/buy/prepare", async (req, res) => {
+    try {
+        const {walletaddress, amount} = req.body;
+        if (!algosdk.isValidAddress(walletaddress)) {
+            return res.status(400).json({error: "Invalid Algorand address"});
+        }
+        const algoAmount = parseFloat(amount);
+        if (!(algoAmount > 0)) {
+            return res.status(400).json({error: "Invalid amount"});
+        }
+        const microAlgos = Math.round(algoAmount * 1e6);
+
+        const suggestedParams = await algodClient.getTransactionParams().do();
+        const xtxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+            from: walletaddress,
+            to: exchange_address,
+            amount: microAlgos,
+            suggestedParams,
+        });
+        const encodedTxn = algosdk.encodeUnsignedTransaction(xtxn);
+        res.status(200).json({txn: Buffer.from(encodedTxn).toString("base64")});
+    } catch (e) {
+        console.log(e.message || e);
+        res.status(400).json({message: e.message || "Unable to prepare buy transaction"});
+    }
+});
+
+app.post("/api/market/buy/submit", async (req, res) => {
+    try {
+        const {walletaddress, amount, signedTxn} = req.body;
+        const algoAmount = parseFloat(amount);
+
+        const rawSignedTxn = Buffer.from(signedTxn, "base64");
+        const xtx = await algodClient.sendRawTransaction(rawSignedTxn).do();
+        await algosdk.waitForConfirmation(algodClient, xtx.txId, 4);
+
+        const cctAmount = Math.floor(algoAmount / CCT_PRICE_ALGO);
+        if (cctAmount <= 0) throw new Error("Amount too small to purchase any CCT");
+
+        const suggestedParams = await algodClient.getTransactionParams().do();
+        const axferTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+            from: exchange.addr,
+            to: walletaddress,
+            assetIndex: assetID,
+            amount: cctAmount,
+            suggestedParams,
+        });
+        const rawSignedAxfer = axferTxn.signTxn(exchange.sk);
+        const payoutTx = await algodClient.sendRawTransaction(rawSignedAxfer).do();
+        await algosdk.waitForConfirmation(algodClient, payoutTx.txId, 4);
+
+        res.status(200).json({message: "bought", cctAmount, payTxId: xtx.txId, payoutTxId: payoutTx.txId});
+    } catch (e) {
+        console.log(e.message || e);
+        res.status(400).json({message: e.message || "Unable to complete purchase"});
+    }
+});
+
 // Example backend route (express.js)
 
 app.post('/api/authenticate', async (req, res) => {
     try {
       const { accountAddress } = req.body;
-  
-      // Validate address (ensure this is correct for algosdk validation)
+
       if (!algosdk.isValidAddress(accountAddress)) {
         return res.status(400).json({ error: 'Invalid Algorand address' });
       }
-  
-    // Get the unsigned transaction (Allow 'amount: 0' for your logic)
-    const xtxn = await algotxns.getPaymentTxn(algodClient, accountAddress, vendor_address, assetID, 0);
-    console.log("Transaction before encoding: ",xtxn)
-    // Success Response: Distinguish Zero Algo Transactions
-    const encodedTxn = algosdk.encodeObj([xtxn]);
 
-    console.log("Transaction after encoding: ",encodedTxn)
-    res.set('Content-Type', 'application/octet-stream');
-    res.send({ txn: encodedTxn, isZeroAlgoTransaction: true }); 
+      // 0-ALGO self-payment; only used to prove control of accountAddress via signature.
+      const xtxn = await algotxns.getAuthTxn(algodClient, accountAddress);
+      const encodedTxn = algosdk.encodeUnsignedTransaction(xtxn);
+
+      res.status(200).json({ txn: Buffer.from(encodedTxn).toString('base64') });
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: 'Internal server error' });
     }
   });
-  
+
 
 
 app.post('/api/submitTransaction', async (req, res) => {
     try {
       const { signedTxn } = req.body;
-  
 
-      console.log(signedTxn)
-      // Validate signed transaction
-    //   if (!algosdk.isv(signedTxn)) {
-    //     return res.status(400).json({ error: 'Invalid signed transaction' });
-    //   }
-  
-      // Submit the signed transaction to the Algorand network
-      const result = await algodClient.sendRawTransaction(signedTxn).do();
-      console.log("Submitting transaction to the network!")
-      // Respond with the result
-      res.status(200).json({ message: 'Transaction submitted successfully', result });
+      const rawSignedTxn = Buffer.from(signedTxn, 'base64');
+      const xtx = await algodClient.sendRawTransaction(rawSignedTxn).do();
+      const confirmedTxn = await algosdk.waitForConfirmation(algodClient, xtx.txId, 4);
+
+      res.status(200).json({
+        message: 'Transaction submitted successfully',
+        txId: xtx.txId,
+        confirmedRound: confirmedTxn['confirmed-round'],
+      });
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: 'Internal server error' });
