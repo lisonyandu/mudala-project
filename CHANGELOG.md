@@ -3,6 +3,25 @@
 Build log for Mudala's post-thesis work, kept alongside `ROADMAP.md` (what's
 next) as a record of what was actually built and why. Newest first.
 
+## Certificate documents on credit requests
+
+**What**: sellers now attach an actual offset certificate (PDF/PNG/JPG) when
+requesting credits - required, not optional. The file is pinned to IPFS via
+Pinata (`utils/pinata.js`, native `fetch`/`FormData`/`Blob`, no new HTTP
+client dependency) and the resulting gateway URL is stored on the
+`creditrequests` row (`certificateurl`, added via a one-off `ALTER TABLE`
+script rather than a broad `sync({alter: true})`, since the table already
+held real test data). Both the regulator's review queue and the seller's own
+request history link to it.
+
+**Why**: next on the roadmap, and it closes a real gap - the regulator
+queue table already had a column literally labeled "Certificate," but it
+was just showing the seller's free-text project ID, not any actual
+evidence. The paper's own description of the regulator role ("assess -
+verify documentation and evidence for compliance with standards") wasn't
+something the app actually did until now. The Pinata keys had been sitting
+unused in `.env.local` since the original 2023 build.
+
 ## Seller-set listings, replacing the fixed CCT price
 
 **What**: `Trade.vue` and the backend `/api/market/*` endpoints were rebuilt

@@ -25,7 +25,8 @@ router.get("/creditrequests", requireWallet, requireRegulator, (req, res) => {
                     projectid: r.registeredmember.projectid,
                     amount: r.amount,
                     status: r.status,
-                    date: r.date
+                    date: r.date,
+                    certificateurl: r.certificateurl,
                 });
             });
             res.status(200).json(result);

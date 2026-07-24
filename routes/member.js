@@ -1,4 +1,5 @@
 const express = require("express");
+const multer = require("multer");
 const router = express.Router();
 const initModels = require("../models/init-models");
 const sequelise = require("../config/db");
@@ -6,6 +7,16 @@ const models = initModels(sequelise);
 const {Sequelize} = require("sequelize");
 const statuses = require("../utils/statuses");
 const {requireWallet} = require("../middleware/auth.js");
+const {pinFileToIPFS} = require("../utils/pinata.js");
+
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {fileSize: 10 * 1024 * 1024},
+    fileFilter: (req, file, cb) => {
+        const allowed = ["application/pdf", "image/png", "image/jpeg"];
+        cb(null, allowed.includes(file.mimetype));
+    },
+});
 
 async function findMemberByWallet(walletaddress) {
     return models.RegisteredMembers.findOne({where: {walletaddress}});
@@ -33,35 +44,42 @@ router.post("/register", (req, res) => {
         });
 });
 
-router.post("/requestcredit", requireWallet, async (req, res) => {
-    const member = await findMemberByWallet(req.walletAddress);
-    if (!member) {
-        return res.status(400).json({message: "Member not found"});
-    }
-
-    const hasPending = await models.CreditRequests.findOne({
-        where: {
-            memberid: member.pk,
-            status: statuses.PENDING
+router.post("/requestcredit", requireWallet, upload.single("certificate"), async (req, res) => {
+    try {
+        const member = await findMemberByWallet(req.walletAddress);
+        if (!member) {
+            return res.status(400).json({message: "Member not found"});
         }
-    })
 
-    if (hasPending){
-        res.status(400).send('You already have a pending request')
-    } else {
+        if (!req.file) {
+            return res.status(400).json({message: "A certificate (PDF, PNG or JPG) is required"});
+        }
+
+        const hasPending = await models.CreditRequests.findOne({
+            where: {
+                memberid: member.pk,
+                status: statuses.PENDING
+            }
+        })
+
+        if (hasPending) {
+            return res.status(400).send('You already have a pending request')
+        }
+
+        const certificateurl = await pinFileToIPFS(req.file.buffer, req.file.originalname, req.file.mimetype);
+
         const data = {
             memberid: member.pk,
             date: req.body.date,
             status: statuses.PENDING,
+            certificateurl,
         };
 
-        models.CreditRequests.create(data)
-            .then((_) => {
-                res.status(200).json({message: "success"});
-            })
-            .catch((err) => {
-                res.status(400).json({message: "error", error: err});
-            });
+        await models.CreditRequests.create(data);
+        res.status(200).json({message: "success"});
+    } catch (err) {
+        console.log(err.message || err);
+        res.status(400).json({message: err.message || "error"});
     }
 });
 
@@ -88,7 +106,8 @@ router.post("/myrequests", requireWallet, async (req, res) => {
                     projectid: r.registeredmember.projectid,
                     amount: r.amount,
                     status: r.status,
-                    date: r.date
+                    date: r.date,
+                    certificateurl: r.certificateurl,
                 });
             });
             res.status(200).json(result);

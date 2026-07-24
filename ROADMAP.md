@@ -10,11 +10,8 @@ by priority within each track; not all of it is scheduled, this is a menu.
    marketplace, not a matching-engine order book — simpler to build
    correctly, still real price discovery instead of one fixed constant). See
    design notes below.
-3. **Certificate documents on credit requests** — sellers submit a free-text
-   project ID today; attaching the actual offset certificate (PDF/image)
-   would strengthen the verification story. Pinata (IPFS pinning) API keys
-   are already sitting unused in `.env.local` from earlier work — natural
-   fit.
+3. ~~**Certificate documents on credit requests**~~ — done, see design notes
+   below.
 4. **Automated tests** — zero test coverage in either repo.
 5. **A real deployment path** — the GitHub Actions workflows in the frontend
    repo don't build the Vue SPA, and there's no hosting decision made for the
@@ -64,3 +61,22 @@ by priority within each track; not all of it is scheduled, this is a menu.
   broker fee) to *that listing's* seller — not a shared pool average.
 - `NEXT_PUBLIC_CCT_PRICE_ALGO` still exists as a suggested default shown when
   a seller creates a listing, but nothing enforces it anymore.
+
+## Certificate documents — design notes
+
+- A certificate (PDF/PNG/JPG, 10MB cap) is now **required** to submit a
+  credit request. `routes/member.js` accepts it via `multer` (in-memory,
+  never written to disk) and pins it to IPFS through Pinata
+  (`utils/pinata.js`, using the JWT already in `.env.local`), storing the
+  resulting gateway URL on the `creditrequests` row.
+- `CreditRequests` gained a `certificateurl` column via a targeted
+  `ALTER TABLE` (`scripts/migrate-add-certificateurl.js`) rather than
+  `sync({alter: true})` - the table already held real test data, and a
+  single explicit statement is safer than asking Sequelize to re-diff every
+  table on every boot.
+- The regulator's queue and the seller's own request history both link
+  straight to the file so the regulator can actually review evidence before
+  approving - closing the gap between what the paper claims ("Regulators
+  assess... verify documentation and evidence") and what the app previously
+  did (nothing - "certificate" was just a mislabeled column showing the
+  free-text project ID).

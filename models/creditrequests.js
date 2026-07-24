@@ -26,6 +26,10 @@ module.exports = function (sequelize, DataTypes) {
                 type: DataTypes.STRING(255),
                 allowNull: true,
             },
+            certificateurl: {
+                type: DataTypes.STRING(255),
+                allowNull: true,
+            },
         },
         {
             sequelize,
