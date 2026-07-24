@@ -5,8 +5,9 @@ const sequelise = require("../config/db");
 const models = initModels(sequelise);
 const {Sequelize} = require("sequelize");
 const statuses = require("../utils/statuses");
+const {requireWallet, requireRegulator} = require("../middleware/auth.js");
 
-router.get("/creditrequests", (req, res) => {
+router.get("/creditrequests", requireWallet, requireRegulator, (req, res) => {
     models.CreditRequests.findAll({
         include: [{model: models.RegisteredMembers}],
         where: {
@@ -34,7 +35,7 @@ router.get("/creditrequests", (req, res) => {
         });
 });
 
-router.post("/decline", async (req, res) => {
+router.post("/decline", requireWallet, requireRegulator, async (req, res) => {
     try {
         await models.CreditRequests.update(
             {

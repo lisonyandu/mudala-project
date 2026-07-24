@@ -13,6 +13,7 @@
         "start": "node server.js",
         "dev": "nodemon server.js --host 0.0.0.0",
         "setup:exchange": "node scripts/setup-exchange.js",
+        "setup:retirement": "node scripts/setup-retirement.js",
         "format": "prettier --write 'server.js' 'routes/*.js' 'models/*.js' 'config/*.js'"
     },
     "repository": {
@@ -32,6 +33,7 @@
         "cors": "^2.8.5",
         "dotenv": "^16.0.3",
         "express": "^4.18.1",
+        "jsonwebtoken": "^9.0.3",
         "sequelize": "^6.23.0",
         "sqlite3": "^5.1.1",
         "swagger-jsdoc": "^6.2.5",

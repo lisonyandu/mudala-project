@@ -5,7 +5,11 @@ const sequelise = require("../config/db");
 const models = initModels(sequelise);
 const {Sequelize} = require("sequelize");
 const statuses = require("../utils/statuses");
+const {requireWallet} = require("../middleware/auth.js");
 
+async function findMemberByWallet(walletaddress) {
+    return models.RegisteredMembers.findOne({where: {walletaddress}});
+}
 
 router.post("/register", (req, res) => {
     const data = {
@@ -29,20 +33,24 @@ router.post("/register", (req, res) => {
         });
 });
 
-router.post("/requestcredit", async (req, res) => {
+router.post("/requestcredit", requireWallet, async (req, res) => {
+    const member = await findMemberByWallet(req.walletAddress);
+    if (!member) {
+        return res.status(400).json({message: "Member not found"});
+    }
+
     const hasPending = await models.CreditRequests.findOne({
         where: {
-            memberid: req.body.memberid,
+            memberid: member.pk,
             status: statuses.PENDING
         }
     })
-    // console.log(hasPending)
 
     if (hasPending){
         res.status(400).send('You already have a pending request')
     } else {
         const data = {
-            memberid: req.body.memberid,
+            memberid: member.pk,
             date: req.body.date,
             status: statuses.PENDING,
         };
@@ -57,10 +65,15 @@ router.post("/requestcredit", async (req, res) => {
     }
 });
 
-router.post("/myrequests", (req, res) => {
+router.post("/myrequests", requireWallet, async (req, res) => {
+    const member = await findMemberByWallet(req.walletAddress);
+    if (!member) {
+        return res.status(400).json({message: "Member not found"});
+    }
+
     models.CreditRequests.findAll({
         where: {
-            memberid: req.body.memberid
+            memberid: member.pk
         },
         include: [{model: models.RegisteredMembers}],
     })
@@ -104,12 +117,16 @@ router.post("/registrationdata", async (req, res) => {
     }
 });
 
-router.post("/delete", async (req, res) => {
+router.post("/delete", requireWallet, async (req, res) => {
     try {
+        const member = await findMemberByWallet(req.walletAddress);
+        if (!member) {
+            return res.status(400).json({message: "Member not found"});
+        }
         await models.CreditRequests.destroy(
             {
                 where: {
-                    memberid: req.body.memberid,
+                    memberid: member.pk,
                     pk: req.body.code
                 },
             }
