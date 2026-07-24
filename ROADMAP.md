@@ -5,12 +5,11 @@ by priority within each track; not all of it is scheduled, this is a menu.
 
 ## Application
 
-1. **Session auth** — nothing today ties an API request to the wallet that
-   authenticated; every mutating endpoint trusts whatever `walletaddress`/
-   `memberid` the client sends in the body, and the regulator page/endpoints
-   have no gate at all. *(Status: in progress — see below.)*
-2. **Real order book / market-driven price** — CCT is currently priced at a
-   fixed constant (`NEXT_PUBLIC_CCT_PRICE_ALGO`), not supply and demand.
+1. ~~**Session auth**~~ — done, see design notes below.
+2. ~~**Market-driven price**~~ — done. Went with seller-set listings (like a
+   marketplace, not a matching-engine order book — simpler to build
+   correctly, still real price discovery instead of one fixed constant). See
+   design notes below.
 3. **Certificate documents on credit requests** — sellers submit a free-text
    project ID today; attaching the actual offset certificate (PDF/image)
    would strengthen the verification story. Pinata (IPFS pinning) API keys
@@ -50,3 +49,18 @@ by priority within each track; not all of it is scheduled, this is a menu.
   gates `/regulator` and its backing endpoints.
 - This is a single shared-secret allowlist, not a real multi-admin RBAC
   system — fine for one operator (a thesis prototype), not for a team.
+
+## Seller-set listings — design notes
+
+- `Listings` (pk, memberid, amount, pricealgo, status, escrowtxid): a seller
+  escrows CCT into the exchange account at listing time (same prepare/sign/
+  submit pattern as everything else) and sets their own ALGO-per-CCT price.
+  `amount` is decremented as the listing fills; the listing goes `filled`
+  when it hits zero, or `cancelled` if the seller pulls it (exchange
+  refunds the remaining escrowed CCT back to them).
+- Buyers browse `GET /api/market/listings` (all active listings, any
+  seller) and buy against a specific one, optionally partially. On
+  purchase, the exchange releases CCT to the buyer and ALGO (minus the 1%
+  broker fee) to *that listing's* seller — not a shared pool average.
+- `NEXT_PUBLIC_CCT_PRICE_ALGO` still exists as a suggested default shown when
+  a seller creates a listing, but nothing enforces it anymore.

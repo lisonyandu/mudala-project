@@ -224,10 +224,40 @@ app.get("/api/market", async (req, res) => {
     }
 });
 
-// Sell flow, mirrors /api/authenticate's build->sign->submit pattern:
-// 1) prepare: backend builds the unsigned CCT->exchange transfer, seller signs it via Pera
-// 2) submit: backend relays the signed transfer, confirms it, then pays the seller in ALGO (minus broker fee)
-app.post("/api/market/sell/prepare", requireWallet, async (req, res) => {
+// Seller-set listings: sellers escrow CCT into the exchange account at their
+// own asking price; buyers browse active listings and buy against a specific
+// one. Replaces the old fixed-CCT_PRICE_ALGO immediate swap.
+
+async function findMemberByWallet(walletaddress) {
+    return models.RegisteredMembers.findOne({where: {walletaddress}});
+}
+
+app.get("/api/market/listings", async (req, res) => {
+    try {
+        const rows = await models.Listings.findAll({
+            where: {status: "active"},
+            include: [{model: models.RegisteredMembers}],
+            order: [["pk", "DESC"]],
+        });
+        res.status(200).json(rows.map((r) => ({
+            id: r.pk,
+            memberid: r.memberid,
+            companyname: r.registeredmember.companyname,
+            wallet: r.registeredmember.walletaddress,
+            amount: r.amount,
+            priceAlgo: r.pricealgo,
+            date: r.date,
+        })));
+    } catch (e) {
+        console.log(e.message || e);
+        res.status(400).json({message: "error"});
+    }
+});
+
+// List flow, mirrors /api/authenticate's build->sign->submit pattern:
+// 1) prepare: backend builds the unsigned CCT->exchange escrow transfer, seller signs it via Pera
+// 2) submit: backend relays it, confirms it, then creates the listing row
+app.post("/api/market/list/prepare", requireWallet, async (req, res) => {
     try {
         const {amount} = req.body;
         const walletaddress = req.walletAddress;
@@ -241,52 +271,98 @@ app.post("/api/market/sell/prepare", requireWallet, async (req, res) => {
         res.status(200).json({txn: Buffer.from(encodedTxn).toString("base64")});
     } catch (e) {
         console.log(e.message || e);
-        res.status(400).json({message: friendlyChainError(e) || e.message || "Unable to prepare sell transaction"});
+        res.status(400).json({message: friendlyChainError(e) || e.message || "Unable to prepare listing"});
     }
 });
 
-app.post("/api/market/sell/submit", requireWallet, async (req, res) => {
+app.post("/api/market/list/submit", requireWallet, async (req, res) => {
     try {
-        const {amount, signedTxn} = req.body;
+        const {amount, priceAlgo, signedTxn} = req.body;
         const walletaddress = req.walletAddress;
         const cctAmount = parseFloat(amount);
+        const price = parseFloat(priceAlgo);
+        if (!(price > 0)) {
+            return res.status(400).json({message: "Invalid price"});
+        }
+
+        const member = await findMemberByWallet(walletaddress);
+        if (!member) {
+            return res.status(400).json({message: "Member not found"});
+        }
 
         const rawSignedTxn = Buffer.from(signedTxn, "base64");
         const xtx = await algodClient.sendRawTransaction(rawSignedTxn).do();
         await algosdk.waitForConfirmation(algodClient, xtx.txId, 4);
 
-        const payoutAlgo = cctAmount * CCT_PRICE_ALGO * (1 - BROKER_FEE_PCT);
-        const payoutMicroAlgos = Math.round(payoutAlgo * 1e6);
-
-        const suggestedParams = await algodClient.getTransactionParams().do();
-        const payTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-            from: exchange.addr,
-            to: walletaddress,
-            amount: payoutMicroAlgos,
-            suggestedParams,
+        const n = new Date();
+        const listing = await models.Listings.create({
+            memberid: member.pk,
+            amount: cctAmount,
+            pricealgo: price,
+            status: "active",
+            date: `${n.getDate()}/${n.getMonth() + 1}/${n.getFullYear()}`,
+            escrowtxid: xtx.txId,
         });
-        const rawSignedPayTxn = payTxn.signTxn(exchange.sk);
-        const payoutTx = await algodClient.sendRawTransaction(rawSignedPayTxn).do();
-        await algosdk.waitForConfirmation(algodClient, payoutTx.txId, 4);
 
-        res.status(200).json({message: "sold", payoutAlgo, sellTxId: xtx.txId, payoutTxId: payoutTx.txId});
+        res.status(200).json({message: "listed", listingId: listing.pk, escrowTxId: xtx.txId});
     } catch (e) {
         console.log(e.message || e);
-        res.status(400).json({message: friendlyChainError(e) || e.message || "Unable to complete sale"});
+        res.status(400).json({message: friendlyChainError(e) || e.message || "Unable to create listing"});
     }
 });
 
-// Buy flow, same shape: prepare an ALGO->exchange payment for the buyer to sign,
-// then relay + confirm it before transferring the corresponding CCT to the buyer.
+app.post("/api/market/list/cancel", requireWallet, async (req, res) => {
+    try {
+        const member = await findMemberByWallet(req.walletAddress);
+        if (!member) {
+            return res.status(400).json({message: "Member not found"});
+        }
+
+        const listing = await models.Listings.findOne({where: {pk: req.body.listingId}});
+        if (!listing || listing.memberid !== member.pk || listing.status !== "active") {
+            return res.status(400).json({message: "Listing not found"});
+        }
+
+        const suggestedParams = await algodClient.getTransactionParams().do();
+        const refundTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+            from: exchange.addr,
+            to: req.walletAddress,
+            assetIndex: assetID,
+            amount: toBaseUnits(listing.amount),
+            suggestedParams,
+        });
+        const rawSignedRefund = refundTxn.signTxn(exchange.sk);
+        const refundTx = await algodClient.sendRawTransaction(rawSignedRefund).do();
+        await algosdk.waitForConfirmation(algodClient, refundTx.txId, 4);
+
+        listing.status = "cancelled";
+        await listing.save();
+
+        res.status(200).json({message: "cancelled", refundTxId: refundTx.txId});
+    } catch (e) {
+        console.log(e.message || e);
+        res.status(400).json({message: friendlyChainError(e) || e.message || "Unable to cancel listing"});
+    }
+});
+
+// Buy flow: buyer pays listing.priceAlgo * amount to the exchange, then the
+// exchange releases that much CCT to the buyer and the ALGO (minus broker
+// fee) to the listing's seller - not a generic pool, a specific seller.
 app.post("/api/market/buy/prepare", requireWallet, async (req, res) => {
     try {
-        const {amount} = req.body;
+        const {listingId, amount} = req.body;
         const walletaddress = req.walletAddress;
-        const algoAmount = parseFloat(amount);
-        if (!(algoAmount > 0)) {
+        const cctAmount = parseFloat(amount);
+        if (!(cctAmount > 0)) {
             return res.status(400).json({error: "Invalid amount"});
         }
-        const microAlgos = Math.round(algoAmount * 1e6);
+
+        const listing = await models.Listings.findOne({where: {pk: listingId}});
+        if (!listing || listing.status !== "active" || cctAmount > listing.amount) {
+            return res.status(400).json({error: "Listing unavailable for that amount"});
+        }
+
+        const microAlgos = Math.round(cctAmount * listing.pricealgo * 1e6);
 
         const suggestedParams = await algodClient.getTransactionParams().do();
         const xtxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
@@ -299,23 +375,25 @@ app.post("/api/market/buy/prepare", requireWallet, async (req, res) => {
         res.status(200).json({txn: Buffer.from(encodedTxn).toString("base64")});
     } catch (e) {
         console.log(e.message || e);
-        res.status(400).json({message: friendlyChainError(e) || e.message || "Unable to prepare buy transaction"});
+        res.status(400).json({message: friendlyChainError(e) || e.message || "Unable to prepare purchase"});
     }
 });
 
 app.post("/api/market/buy/submit", requireWallet, async (req, res) => {
     try {
-        const {amount, signedTxn} = req.body;
+        const {listingId, amount, signedTxn} = req.body;
         const walletaddress = req.walletAddress;
-        const algoAmount = parseFloat(amount);
+        const cctAmount = parseFloat(amount);
+
+        const listing = await models.Listings.findOne({where: {pk: listingId}});
+        if (!listing || listing.status !== "active" || cctAmount > listing.amount) {
+            return res.status(400).json({message: "Listing unavailable for that amount"});
+        }
+        const seller = await models.RegisteredMembers.findOne({where: {pk: listing.memberid}});
 
         const rawSignedTxn = Buffer.from(signedTxn, "base64");
         const xtx = await algodClient.sendRawTransaction(rawSignedTxn).do();
         await algosdk.waitForConfirmation(algodClient, xtx.txId, 4);
-
-        // Round to the asset's own precision so the base-unit conversion below is exact
-        const cctAmount = Math.floor((algoAmount / CCT_PRICE_ALGO) * CCT_UNITS) / CCT_UNITS;
-        if (cctAmount <= 0) throw new Error("Amount too small to purchase any CCT");
 
         const suggestedParams = await algodClient.getTransactionParams().do();
         const axferTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
@@ -329,7 +407,33 @@ app.post("/api/market/buy/submit", requireWallet, async (req, res) => {
         const payoutTx = await algodClient.sendRawTransaction(rawSignedAxfer).do();
         await algosdk.waitForConfirmation(algodClient, payoutTx.txId, 4);
 
-        res.status(200).json({message: "bought", cctAmount, payTxId: xtx.txId, payoutTxId: payoutTx.txId});
+        const payoutAlgo = cctAmount * listing.pricealgo * (1 - BROKER_FEE_PCT);
+        const payoutMicroAlgos = Math.round(payoutAlgo * 1e6);
+        const sellerParams = await algodClient.getTransactionParams().do();
+        const payTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+            from: exchange.addr,
+            to: seller.walletaddress,
+            amount: payoutMicroAlgos,
+            suggestedParams: sellerParams,
+        });
+        const rawSignedPayTxn = payTxn.signTxn(exchange.sk);
+        const payoutAlgoTx = await algodClient.sendRawTransaction(rawSignedPayTxn).do();
+        await algosdk.waitForConfirmation(algodClient, payoutAlgoTx.txId, 4);
+
+        listing.amount = listing.amount - cctAmount;
+        if (listing.amount <= 0) {
+            listing.status = "filled";
+            listing.amount = 0;
+        }
+        await listing.save();
+
+        res.status(200).json({
+            message: "bought",
+            cctAmount,
+            payTxId: xtx.txId,
+            payoutCctTxId: payoutTx.txId,
+            payoutAlgoTxId: payoutAlgoTx.txId,
+        });
     } catch (e) {
         console.log(e.message || e);
         res.status(400).json({message: friendlyChainError(e) || e.message || "Unable to complete purchase"});

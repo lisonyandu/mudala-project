@@ -3,6 +3,25 @@
 Build log for Mudala's post-thesis work, kept alongside `ROADMAP.md` (what's
 next) as a record of what was actually built and why. Newest first.
 
+## Seller-set listings, replacing the fixed CCT price
+
+**What**: `Trade.vue` and the backend `/api/market/*` endpoints were rebuilt
+around a `Listings` model - sellers escrow CCT at their own asking price
+(`POST /api/market/list/prepare`+`/submit`), buyers browse active listings
+from any seller (`GET /api/market/listings`) and buy against a specific one,
+optionally partially. On purchase the exchange pays that listing's specific
+seller, not an averaged pool. Sellers can cancel an unfilled listing to get
+their escrowed CCT back (`POST /api/market/list/cancel`). This replaced the
+old fixed-`CCT_PRICE_ALGO` immediate-swap `/api/market/sell` and
+`/api/market/buy` endpoints entirely.
+
+**Why**: a single hardcoded ALGO-per-CCT constant isn't a market, and was
+next on the roadmap. Chose a listings model over a full bid/ask order book
+with a matching engine - meaningfully more work (order storage, matching
+logic, partial fills, cancellation, order-book UI) for a thesis prototype
+where "real price discovery instead of one number" was the actual goal, not
+exchange-grade market microstructure.
+
 ## Session auth + regulator gating
 
 **What**: `/api/submitTransaction` now decodes the *signed* transaction to
